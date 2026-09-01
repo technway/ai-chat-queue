@@ -41,4 +41,39 @@ describe("QueueService", () => {
     expect(() => service.enqueue("Keep this message")).not.toThrow();
     expect(service.getState().items[0]?.content).toBe("Keep this message");
   });
+
+  it("claims pending messages and publishes status changes", () => {
+    const service = new QueueService();
+    const first = service.enqueue("First");
+    const second = service.enqueue("Second");
+    const listener = vi.fn();
+    service.subscribe(listener);
+
+    expect(service.claimNextPending()).toEqual({
+      ...first,
+      status: "sending",
+    });
+    expect(service.markSent(first.id)).toEqual({ ...first, status: "sent" });
+    expect(service.claimNextPending()).toEqual({
+      ...second,
+      status: "sending",
+    });
+    expect(service.markPending(second.id)).toEqual({
+      ...second,
+      status: "pending",
+    });
+    expect(service.markFailed(second.id)).toEqual({
+      ...second,
+      status: "failed",
+    });
+    expect(service.claimNextPending()).toBeUndefined();
+    expect(service.markSent("missing")).toBeUndefined();
+    expect(listener).toHaveBeenCalledTimes(5);
+    expect(listener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        type: "status-changed",
+        item: expect.objectContaining({ id: second.id, status: "failed" }),
+      }),
+    );
+  });
 });

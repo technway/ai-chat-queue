@@ -1,8 +1,8 @@
 import { MessageQueue } from "./queue";
-import type { QueueItem, QueueState } from "./queue.types";
+import type { QueueItem, QueueItemStatus, QueueState } from "./queue.types";
 
 export interface QueueServiceEvent {
-  readonly type: "queued";
+  readonly type: "queued" | "status-changed";
   readonly item: QueueItem;
   readonly state: QueueState;
 }
@@ -16,21 +16,25 @@ export class QueueService {
 
   enqueue(content: string): QueueItem {
     const item = this.queue.add(content);
-    const event: QueueServiceEvent = {
-      type: "queued",
-      item,
-      state: this.queue.getState(),
-    };
-
-    for (const listener of this.listeners) {
-      try {
-        listener(event);
-      } catch {
-        // A UI listener must not turn a successful enqueue into a native send.
-      }
-    }
-
+    this.publish("queued", item);
     return item;
+  }
+
+  claimNextPending(): QueueItem | undefined {
+    const item = this.queue.getNextPending();
+    return item ? this.updateStatus(item.id, "sending") : undefined;
+  }
+
+  markPending(id: string): QueueItem | undefined {
+    return this.updateStatus(id, "pending");
+  }
+
+  markSent(id: string): QueueItem | undefined {
+    return this.updateStatus(id, "sent");
+  }
+
+  markFailed(id: string): QueueItem | undefined {
+    return this.updateStatus(id, "failed");
   }
 
   getState(): QueueState {
@@ -40,5 +44,34 @@ export class QueueService {
   subscribe(listener: QueueServiceListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  private updateStatus(
+    id: string,
+    status: QueueItemStatus,
+  ): QueueItem | undefined {
+    const item = this.queue.updateStatus(id, status);
+
+    if (item) {
+      this.publish("status-changed", item);
+    }
+
+    return item;
+  }
+
+  private publish(type: QueueServiceEvent["type"], item: QueueItem): void {
+    const event: QueueServiceEvent = {
+      type,
+      item,
+      state: this.queue.getState(),
+    };
+
+    for (const listener of this.listeners) {
+      try {
+        listener(event);
+      } catch {
+        // Listener failures must not break successful queue operations.
+      }
+    }
   }
 }

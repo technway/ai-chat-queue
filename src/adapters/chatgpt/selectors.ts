@@ -7,6 +7,8 @@ export const CHATGPT_SELECTORS = {
     'div[contenteditable="true"][data-testid="prompt-textarea"]',
   ],
   sendButton: [
+    "#composer-submit-button",
+    'button[data-testid="composer-submit-button"]',
     'button[data-testid="send-button"]',
     'button[aria-label="Send prompt"]',
     'button[aria-label="Send message"]',

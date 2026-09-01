@@ -1,6 +1,18 @@
 import { CHATGPT_SELECTORS } from "./selectors";
 
 type ComposerRoot = Pick<ParentNode, "querySelectorAll">;
+type SettleDom = () => Promise<void>;
+
+function settleDom(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+
+    setTimeout(resolve, 0);
+  });
+}
 
 function asElement(target: EventTarget | null): Element | null {
   return target && "closest" in target ? (target as Element) : null;
@@ -58,8 +70,67 @@ function isVisible(element: Element): boolean {
   return true;
 }
 
+function isDisabled(element: Element): boolean {
+  return (
+    ("disabled" in element && element.disabled === true) ||
+    element.getAttribute("aria-disabled") === "true"
+  );
+}
+
+function readComposer(composer: Element): string {
+  if ("value" in composer && typeof composer.value === "string") {
+    return composer.value;
+  }
+
+  if ("innerText" in composer && typeof composer.innerText === "string") {
+    return composer.innerText;
+  }
+
+  return composer.textContent ?? "";
+}
+
+function writeComposer(composer: Element, content: string): void {
+  if ("value" in composer && typeof composer.value === "string") {
+    const prototype = Object.getPrototypeOf(composer);
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      prototype,
+      "value",
+    )?.set;
+
+    if (valueSetter) {
+      valueSetter.call(composer, content);
+    } else {
+      composer.value = content;
+    }
+  } else {
+    composer.textContent = content;
+  }
+
+  const view = composer.ownerDocument?.defaultView;
+  const InputEventConstructor = view?.InputEvent ?? globalThis.InputEvent;
+  const EventConstructor = view?.Event ?? Event;
+
+  if (typeof InputEventConstructor === "function") {
+    composer.dispatchEvent(
+      new InputEventConstructor("input", {
+        bubbles: true,
+        composed: true,
+        data: content || null,
+        inputType: content ? "insertText" : "deleteContentBackward",
+      }),
+    );
+  } else {
+    composer.dispatchEvent(new EventConstructor("input", { bubbles: true }));
+  }
+
+  composer.dispatchEvent(new EventConstructor("change", { bubbles: true }));
+}
+
 export class ChatGptComposerAdapter {
-  constructor(private readonly root: ComposerRoot) {}
+  constructor(
+    private readonly root: ComposerRoot,
+    private readonly waitForDom: SettleDom = settleDom,
+  ) {}
 
   isComposerTarget(target: EventTarget | null): boolean {
     const element = asElement(target);
@@ -73,20 +144,7 @@ export class ChatGptComposerAdapter {
 
   readMessage(): string {
     const composer = this.findComposer();
-
-    if (!composer) {
-      return "";
-    }
-
-    if ("value" in composer && typeof composer.value === "string") {
-      return composer.value;
-    }
-
-    if ("innerText" in composer && typeof composer.innerText === "string") {
-      return composer.innerText;
-    }
-
-    return composer.textContent ?? "";
+    return composer ? readComposer(composer) : "";
   }
 
   clearMessage(): void {
@@ -96,17 +154,61 @@ export class ChatGptComposerAdapter {
       return;
     }
 
-    if ("value" in composer && typeof composer.value === "string") {
-      composer.value = "";
-    } else {
-      composer.textContent = "";
-    }
-
     try {
-      composer.dispatchEvent(new Event("input", { bubbles: true }));
+      writeComposer(composer, "");
     } catch {
       // Clearing the DOM value is still useful if an input event cannot be sent.
     }
+  }
+
+  async send(content: string): Promise<"sent" | "deferred" | "staged"> {
+    const composer = this.findComposer();
+
+    if (!composer) {
+      throw new Error("ChatGPT composer is unavailable");
+    }
+
+    const existingContent = readComposer(composer);
+
+    if (existingContent.trim().length > 0 && existingContent !== content) {
+      console.log("[message-queue] automatic send deferred", {
+        draftLength: existingContent.length,
+        reason: "composer-not-empty",
+      });
+      return "deferred";
+    }
+
+    if (existingContent !== content) {
+      writeComposer(composer, content);
+    }
+
+    await this.waitForDom();
+
+    const activeComposer = this.findComposer();
+
+    if (!activeComposer) {
+      throw new Error("ChatGPT composer disappeared before sending");
+    }
+
+    const activeContent = readComposer(activeComposer);
+
+    if (activeContent !== content) {
+      console.log("[message-queue] automatic send deferred", {
+        actualLength: activeContent.length,
+        expectedLength: content.length,
+        reason: "composer-changed",
+      });
+      return "deferred";
+    }
+
+    const sendButton = this.findEnabledSendButton();
+
+    if (!sendButton) {
+      return "staged";
+    }
+
+    sendButton.click();
+    return "sent";
   }
 
   private findComposer(): Element | null {
@@ -117,6 +219,24 @@ export class ChatGptComposerAdapter {
         for (const composer of composers) {
           if (isVisible(composer)) {
             return composer;
+          }
+        }
+      } catch {
+        // Try the remaining selector fallbacks.
+      }
+    }
+
+    return null;
+  }
+
+  private findEnabledSendButton(): HTMLElement | null {
+    for (const selector of CHATGPT_SELECTORS.sendButton) {
+      try {
+        const buttons = this.root.querySelectorAll(selector);
+
+        for (const button of buttons) {
+          if (isVisible(button) && !isDisabled(button)) {
+            return button as HTMLElement;
           }
         }
       } catch {
