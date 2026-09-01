@@ -22,12 +22,30 @@ export default defineContentScript({
       queue,
       sender: composer,
     });
+    const drainIfReady = () => {
+      const state = generationState.getState();
+
+      if (state === "available" || state === "unavailable") {
+        void drainer.drainNext();
+      }
+    };
+
+    const stopQueueSubscription = queue.subscribe((event) => {
+      if (event.type !== "queued") {
+        return;
+      }
+
+      // Wait until the integration clears the submitted draft from the composer.
+      queueMicrotask(drainIfReady);
+    });
 
     const stopIntegration = integration.start(document);
     const stopObserving = generationState.observeState((state) => {
       console.log("[message-queue] ChatGPT state changed", { state });
 
       if (state === "generating") {
+        // Restore any draft that was preserved during automatic submission.
+        void composer.restoreDraft();
         drainer.markGenerating();
       } else if (state === "available" || state === "unavailable") {
         // The unavailable phase stages text. The available phase submits it.
@@ -39,6 +57,7 @@ export default defineContentScript({
       drainer.stop();
       stopIntegration();
       stopObserving();
+      stopQueueSubscription();
     });
   },
 });

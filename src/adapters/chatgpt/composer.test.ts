@@ -231,6 +231,47 @@ describe("ChatGptComposerAdapter", () => {
     expect(composer.dispatchEvent).not.toHaveBeenCalled();
   });
 
+  it("restores the user draft after submitting a queued message", async () => {
+    const composer = {
+      value: "User draft",
+      dispatchEvent: vi.fn(),
+    } as unknown as Element;
+    const sendButton = {
+      disabled: false,
+      getAttribute: vi.fn(() => null),
+      closest: vi.fn(() => null),
+      click: vi.fn(() => {
+        if ("value" in composer) {
+          composer.value = "";
+        }
+      }),
+    } as unknown as Element;
+    const adapter = new ChatGptComposerAdapter(
+      {
+        querySelectorAll: vi.fn((selector: string) => {
+          if (includesSelector(CHATGPT_SELECTORS.composer, selector)) {
+            return [composer];
+          }
+
+          if (includesSelector(CHATGPT_SELECTORS.sendButton, selector)) {
+            return [sendButton];
+          }
+
+          return [];
+        }) as unknown as ParentNode["querySelectorAll"],
+      },
+      async () => undefined,
+    );
+
+    await expect(adapter.send("Queued message")).resolves.toBe("sent");
+    expect("value" in composer && composer.value).toBe("");
+
+    await adapter.restoreDraft();
+
+    expect("value" in composer && composer.value).toBe("User draft");
+    expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
+  });
+
   it("leaves queued text staged when automatic submission is unavailable", async () => {
     const composer = {
       value: "",

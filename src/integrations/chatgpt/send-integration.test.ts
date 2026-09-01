@@ -35,6 +35,7 @@ class TestEventTarget {
 
 function createActionEvent(target: EventTarget, options: object = {}) {
   return {
+    isTrusted: true,
     target,
     key: "Enter",
     shiftKey: false,
@@ -217,7 +218,8 @@ describe("ChatGptSendIntegration", () => {
     );
     expect(harness.queueListener).toHaveBeenCalledTimes(1);
     expect(pointerEvent.preventDefault).toHaveBeenCalledOnce();
-    expect(clickEvent.preventDefault).not.toHaveBeenCalled();
+    expect(clickEvent.preventDefault).toHaveBeenCalledOnce();
+    expect(clickEvent.stopImmediatePropagation).toHaveBeenCalledOnce();
   });
 
   it("queues click-only send actions while generating", () => {

@@ -86,7 +86,6 @@ describe("QueueDrainer", () => {
 
     expect(queue.getState().items[0]).toEqual(item);
 
-    drainer.markGenerating();
     await drainer.drainNext();
 
     expect(sender.send).toHaveBeenCalledTimes(2);

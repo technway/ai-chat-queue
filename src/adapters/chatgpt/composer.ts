@@ -127,6 +127,8 @@ function writeComposer(composer: Element, content: string): void {
 }
 
 export class ChatGptComposerAdapter {
+  private preservedDraft: string | null = null;
+
   constructor(
     private readonly root: ComposerRoot,
     private readonly waitForDom: SettleDom = settleDom,
@@ -161,6 +163,28 @@ export class ChatGptComposerAdapter {
     }
   }
 
+  async restoreDraft(): Promise<void> {
+    const draft = this.preservedDraft;
+
+    if (draft === null) {
+      return;
+    }
+
+    await this.waitForDom();
+
+    const composer = this.findComposer();
+
+    if (!composer) {
+      return;
+    }
+
+    try {
+      this.restoreDraftIn(composer);
+    } catch {
+      // Keep the draft for another restoration attempt.
+    }
+  }
+
   async send(content: string): Promise<"sent" | "deferred" | "staged"> {
     const composer = this.findComposer();
 
@@ -169,13 +193,20 @@ export class ChatGptComposerAdapter {
     }
 
     const existingContent = readComposer(composer);
+    const hasUserDraft =
+      existingContent.trim().length > 0 && existingContent !== content;
 
-    if (existingContent.trim().length > 0 && existingContent !== content) {
+    if (hasUserDraft && !this.findEnabledSendButton()) {
       console.log("[message-queue] automatic send deferred", {
         draftLength: existingContent.length,
-        reason: "composer-not-empty",
+        reason: "send-button-unavailable-with-draft",
       });
       return "deferred";
+    }
+
+    if (hasUserDraft) {
+      // Keep the active draft while the queued message uses ChatGPT's composer.
+      this.preservedDraft = existingContent;
     }
 
     if (existingContent !== content) {
@@ -193,6 +224,10 @@ export class ChatGptComposerAdapter {
     const activeContent = readComposer(activeComposer);
 
     if (activeContent !== content) {
+      if (hasUserDraft) {
+        this.restoreDraftIn(activeComposer);
+      }
+
       console.log("[message-queue] automatic send deferred", {
         actualLength: activeContent.length,
         expectedLength: content.length,
@@ -204,6 +239,11 @@ export class ChatGptComposerAdapter {
     const sendButton = this.findEnabledSendButton();
 
     if (!sendButton) {
+      if (hasUserDraft) {
+        this.restoreDraftIn(activeComposer);
+        return "deferred";
+      }
+
       // React enables the button later. Keep the exact queued text for retry.
       return "staged";
     }
@@ -246,5 +286,19 @@ export class ChatGptComposerAdapter {
     }
 
     return null;
+  }
+
+  private restoreDraftIn(composer: Element): void {
+    const draft = this.preservedDraft;
+
+    if (draft === null) {
+      return;
+    }
+
+    writeComposer(composer, draft);
+    this.preservedDraft = null;
+    console.log("[message-queue] user draft restored", {
+      length: draft.length,
+    });
   }
 }

@@ -61,6 +61,7 @@ export class QueueDrainer {
 
       if (result === "deferred") {
         this.options.queue.markPending(item.id);
+        this.armed = true;
         console.log("[message-queue] queue drain deferred", { id: item.id });
         return;
       }
