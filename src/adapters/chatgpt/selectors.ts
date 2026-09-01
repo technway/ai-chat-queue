@@ -1,4 +1,11 @@
 export const CHATGPT_SELECTORS = {
+  composer: [
+    "#mobile-composer-prompt",
+    "textarea.wm-composer-textarea",
+    "#prompt-textarea",
+    'textarea[data-testid="prompt-textarea"]',
+    'div[contenteditable="true"][data-testid="prompt-textarea"]',
+  ],
   sendButton: [
     'button[data-testid="send-button"]',
     'button[aria-label="Send prompt"]',
