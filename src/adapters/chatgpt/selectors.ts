@@ -1,4 +1,14 @@
 export const CHATGPT_SELECTORS = {
+  composerContainer: [
+    "footer.wm-desktop-detailFooter",
+    ".wm-app-composerDock",
+    '[data-testid="composer"]',
+    'form[data-type="unified-composer"]',
+    "form.wm-composer-composer",
+    "form:has(#composer-submit-button)",
+    "form:has(#prompt-textarea)",
+    "form:has(#mobile-composer-prompt)",
+  ],
   composer: [
     "#mobile-composer-prompt",
     "textarea.wm-composer-textarea",

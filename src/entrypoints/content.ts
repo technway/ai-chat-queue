@@ -1,12 +1,19 @@
+import { createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
 import { ChatGptAdapter } from "../adapters/chatgpt/adapter";
 import { ChatGptComposerAdapter } from "../adapters/chatgpt/composer";
+import { CHATGPT_SELECTORS } from "../adapters/chatgpt/selectors";
+import { QueuePanel } from "../components/queue/QueuePanel";
+import "../components/queue/queue.css";
 import { ChatGptSendIntegration } from "../integrations/chatgpt/send-integration";
 import { QueueService } from "../queue/queue.service";
 import { QueueDrainer } from "../queue/queue-drainer";
 
 export default defineContentScript({
   matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
-  main(ctx) {
+  cssInjectionMode: "ui",
+  async main(ctx) {
     console.log("[message-queue] extension loaded");
 
     const generationState = new ChatGptAdapter({ root: document });
@@ -52,6 +59,37 @@ export default defineContentScript({
         void drainer.drainNext();
       }
     });
+
+    const ui = await createShadowRootUi(ctx, {
+      name: "chatgpt-message-queue",
+      position: "inline",
+      anchor: CHATGPT_SELECTORS.composerContainer.join(","),
+      append(anchor, shadowHost) {
+        // Composer wrappers can grow upward. A form fallback must remain intact.
+        if (anchor.matches("form")) {
+          anchor.before(shadowHost);
+        } else {
+          anchor.prepend(shadowHost);
+        }
+      },
+      inheritStyles: true,
+      isolateEvents: true,
+      onMount(container, _shadow, shadowHost) {
+        console.log("[message-queue] queue UI mounted", {
+          parent: shadowHost.parentElement?.className || null,
+        });
+
+        const root = createRoot(container);
+        root.render(createElement(QueuePanel, { queue }));
+        return root;
+      },
+      onRemove(root) {
+        root?.unmount();
+      },
+    });
+
+    // ChatGPT replaces its composer during navigation and state changes.
+    ui.autoMount();
 
     ctx.onInvalidated(() => {
       drainer.stop();

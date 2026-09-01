@@ -1,11 +1,16 @@
 import { MessageQueue } from "./queue";
 import type { QueueItem, QueueItemStatus, QueueState } from "./queue.types";
 
-export interface QueueServiceEvent {
-  readonly type: "queued" | "status-changed";
-  readonly item: QueueItem;
-  readonly state: QueueState;
-}
+export type QueueServiceEvent =
+  | {
+      readonly type: "queued" | "removed" | "status-changed";
+      readonly item: QueueItem;
+      readonly state: QueueState;
+    }
+  | {
+      readonly type: "cleared";
+      readonly state: QueueState;
+    };
 
 export type QueueServiceListener = (event: QueueServiceEvent) => void;
 
@@ -18,6 +23,37 @@ export class QueueService {
     const item = this.queue.add(content);
     this.publish("queued", item);
     return item;
+  }
+
+  remove(id: string): QueueItem | undefined {
+    const existingItem = this.queue
+      .getState()
+      .items.find((item) => item.id === id);
+
+    if (existingItem?.status === "sending") {
+      return undefined;
+    }
+
+    const item = this.queue.remove(id);
+
+    if (item) {
+      this.publish("removed", item);
+    }
+
+    return item;
+  }
+
+  clear(): void {
+    for (const item of this.queue.getState().items) {
+      if (item.status !== "sending") {
+        this.queue.remove(item.id);
+      }
+    }
+
+    this.notify({
+      type: "cleared",
+      state: this.queue.getState(),
+    });
   }
 
   claimNextPending(): QueueItem | undefined {
@@ -59,13 +95,20 @@ export class QueueService {
     return item;
   }
 
-  private publish(type: QueueServiceEvent["type"], item: QueueItem): void {
+  private publish(
+    type: "queued" | "removed" | "status-changed",
+    item: QueueItem,
+  ): void {
     const event: QueueServiceEvent = {
       type,
       item,
       state: this.queue.getState(),
     };
 
+    this.notify(event);
+  }
+
+  private notify(event: QueueServiceEvent): void {
     for (const listener of this.listeners) {
       try {
         listener(event);

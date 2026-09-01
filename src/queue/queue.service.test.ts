@@ -76,4 +76,44 @@ describe("QueueService", () => {
       }),
     );
   });
+
+  it("removes individual messages and clears the queue", () => {
+    const service = new QueueService();
+    const first = service.enqueue("First");
+    service.enqueue("Second");
+    const listener = vi.fn();
+    service.subscribe(listener);
+
+    expect(service.remove(first.id)).toEqual(first);
+    expect(listener).toHaveBeenLastCalledWith({
+      type: "removed",
+      item: first,
+      state: expect.objectContaining({ total: 1 }),
+    });
+
+    service.clear();
+
+    expect(service.getState().isEmpty).toBe(true);
+    expect(listener).toHaveBeenLastCalledWith({
+      type: "cleared",
+      state: expect.objectContaining({ total: 0, isEmpty: true }),
+    });
+    expect(service.remove("missing")).toBeUndefined();
+    expect(listener).toHaveBeenCalledTimes(2);
+  });
+
+  it("protects a message while it is being sent", () => {
+    const service = new QueueService();
+    const sending = service.enqueue("Sending now");
+    service.enqueue("Still queued");
+    service.claimNextPending();
+
+    expect(service.remove(sending.id)).toBeUndefined();
+
+    service.clear();
+
+    expect(service.getState().items).toEqual([
+      expect.objectContaining({ id: sending.id, status: "sending" }),
+    ]);
+  });
 });
