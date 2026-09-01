@@ -154,6 +154,42 @@ describe("ChatGptSendIntegration", () => {
     expect(harness.composer.clearMessage).toHaveBeenCalledOnce();
   });
 
+  it("queues new sends while unfinished queue work is briefly available", () => {
+    const harness = createHarness("available", "Second message");
+    harness.queue.enqueue("First message");
+    const event = createActionEvent(harness.composerTarget);
+
+    harness.events.emit("keydown", event);
+
+    expect(harness.queue.getState().items).toEqual([
+      expect.objectContaining({
+        content: "First message",
+        status: "pending",
+      }),
+      expect.objectContaining({
+        content: "Second message",
+        status: "pending",
+      }),
+    ]);
+    expect(event.preventDefault).toHaveBeenCalledOnce();
+    expect(harness.composer.clearMessage).toHaveBeenCalledOnce();
+  });
+
+  it("does not intercept the drainer's automatic button click", () => {
+    const harness = createHarness("available", "First message");
+    harness.queue.enqueue("First message");
+    harness.queue.claimNextPending();
+    const event = createActionEvent(harness.sendButtonTarget, {
+      isTrusted: false,
+    });
+
+    harness.events.emit("click", event);
+
+    expect(harness.queue.getState().items).toHaveLength(1);
+    expect(event.preventDefault).not.toHaveBeenCalled();
+    expect(harness.composer.clearMessage).not.toHaveBeenCalled();
+  });
+
   it.each([{ key: "Escape" }, { shiftKey: true }, { isComposing: true }])(
     "ignores non-send keyboard actions",
     (options) => {

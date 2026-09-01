@@ -9,9 +9,10 @@ type ComposerPort = Pick<
 >;
 
 type GenerationStatePort = Pick<ChatGptAdapter, "getState">;
-type QueuePort = Pick<QueueService, "enqueue">;
+type QueuePort = Pick<QueueService, "enqueue" | "getState">;
 
 interface SendActionEvent {
+  readonly isTrusted?: boolean;
   readonly target: EventTarget | null;
   preventDefault(): void;
   stopImmediatePropagation(): void;
@@ -69,21 +70,34 @@ export class ChatGptSendIntegration {
       return;
     }
 
-    this.enqueueWhenGenerating(event);
+    this.enqueueWhenBusy(event);
   }
 
   private handleMouse(event: SendActionEvent): void {
+    // The drainer submits with HTMLElement.click(). Do not queue that click again.
+    if (event.isTrusted === false) {
+      return;
+    }
+
     if (!this.composer.isSendButtonTarget(event.target)) {
       return;
     }
 
-    this.enqueueWhenGenerating(event);
+    this.enqueueWhenBusy(event);
   }
 
-  private enqueueWhenGenerating(event: SendActionEvent): void {
+  private enqueueWhenBusy(event: SendActionEvent): void {
     const state: GenerationState = this.generationState.getState();
+    const counts = this.queue.getState().counts;
+    const hasUnfinishedQueue =
+      counts.pending > 0 || counts.sending > 0 || counts.failed > 0;
 
-    if (state !== "generating" && state !== "unavailable") {
+    // Preserve FIFO order during ChatGPT's brief available state transitions.
+    if (
+      state !== "generating" &&
+      state !== "unavailable" &&
+      !hasUnfinishedQueue
+    ) {
       return;
     }
 

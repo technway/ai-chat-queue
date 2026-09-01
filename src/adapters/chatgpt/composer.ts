@@ -204,6 +204,7 @@ export class ChatGptComposerAdapter {
     const sendButton = this.findEnabledSendButton();
 
     if (!sendButton) {
+      // React enables the button later. Keep the exact queued text for retry.
       return "staged";
     }
 

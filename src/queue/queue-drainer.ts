@@ -37,6 +37,7 @@ export class QueueDrainer {
     }
 
     if (this.inFlight) {
+      // Do not lose an availability change that occurs while staging the text.
       this.retryRequested = true;
       return;
     }

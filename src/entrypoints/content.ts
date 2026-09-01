@@ -30,6 +30,7 @@ export default defineContentScript({
       if (state === "generating") {
         drainer.markGenerating();
       } else if (state === "available" || state === "unavailable") {
+        // The unavailable phase stages text. The available phase submits it.
         void drainer.drainNext();
       }
     });
