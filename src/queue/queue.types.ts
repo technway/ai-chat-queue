@@ -17,4 +17,5 @@ export interface QueueState {
 export interface MessageQueueOptions {
   readonly createId?: () => string;
   readonly now?: () => number;
+  readonly initialItems?: readonly QueueItem[];
 }

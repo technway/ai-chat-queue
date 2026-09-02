@@ -30,6 +30,28 @@ describe("MessageQueue", () => {
     });
   });
 
+  it("restores an existing queue without changing item metadata", () => {
+    const initialItems = [
+      {
+        id: "restored-1",
+        content: "Restored message",
+        createdAt: 123,
+        status: "pending" as const,
+      },
+      {
+        id: "restored-2",
+        content: "Needs attention",
+        createdAt: 456,
+        status: "failed" as const,
+      },
+    ];
+    const queue = new MessageQueue({ initialItems });
+
+    expect(queue.getState().items).toEqual(initialItems);
+    expect(queue.getNextPending()?.id).toBe("restored-1");
+    expect(queue.getState().counts.failed).toBe(1);
+  });
+
   it("adds pending messages with generated metadata", () => {
     const queue = createQueue();
 
@@ -120,6 +142,21 @@ describe("MessageQueue", () => {
     });
 
     expect(() => queue.clear()).not.toThrow();
+  });
+
+  it("replaces all items when the active conversation changes", () => {
+    const queue = createQueue();
+    queue.add("Previous conversation");
+    const replacement = {
+      id: "restored",
+      content: "Current conversation",
+      createdAt: 123,
+      status: "pending" as const,
+    };
+
+    queue.replace([replacement]);
+
+    expect(queue.getState().items).toEqual([replacement]);
   });
 
   it("moves messages to a new queue position", () => {

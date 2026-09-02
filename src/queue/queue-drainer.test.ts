@@ -159,6 +159,48 @@ describe("QueueDrainer", () => {
     expect(queue.getState().counts.pending).toBe(1);
   });
 
+  it("resets halted state when the conversation changes", async () => {
+    const queue = createQueue();
+    const failed = queue.enqueue("Fails in the previous chat");
+    const sender = {
+      send: vi
+        .fn<() => QueueSendResult>()
+        .mockImplementationOnce(() => {
+          throw new Error("Previous chat failed");
+        })
+        .mockReturnValueOnce("sent"),
+    };
+    const drainer = new QueueDrainer({ queue, sender });
+
+    await drainer.drainNext();
+    queue.remove(failed.id);
+    queue.enqueue("Send in the current chat");
+    drainer.reset();
+    await drainer.drainNext();
+
+    expect(sender.send).toHaveBeenCalledTimes(2);
+    expect(queue.getState().counts.sent).toBe(1);
+  });
+
+  it("keeps messages pending while paused and resumes safely", async () => {
+    const queue = createQueue();
+    queue.enqueue("Wait for confirmation");
+    const sender = { send: vi.fn(() => "sent" as const) };
+    const drainer = new QueueDrainer({ queue, sender });
+
+    drainer.pause();
+    await drainer.drainNext();
+
+    expect(sender.send).not.toHaveBeenCalled();
+    expect(queue.getState().counts.pending).toBe(1);
+
+    drainer.resume();
+    await drainer.drainNext();
+
+    expect(sender.send).toHaveBeenCalledWith("Wait for confirmation");
+    expect(queue.getState().counts.sent).toBe(1);
+  });
+
   it("does nothing after cleanup", async () => {
     const queue = createQueue();
     queue.enqueue("Do not send");

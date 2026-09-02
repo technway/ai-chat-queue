@@ -21,6 +21,23 @@ function createQueueItem(
   return Object.freeze({ id, content, createdAt, status });
 }
 
+function copyQueueItems(items: readonly QueueItem[]): QueueItem[] {
+  const ids = new Set<string>();
+
+  return items.map((item) => {
+    if (ids.has(item.id)) {
+      throw new Error(`Queue item ID already exists: ${item.id}`);
+    }
+
+    if (typeof item.content !== "string" || item.content.trim().length === 0) {
+      throw new TypeError("Message content must be a non-empty string");
+    }
+
+    ids.add(item.id);
+    return createQueueItem(item.id, item.content, item.createdAt, item.status);
+  });
+}
+
 export class MessageQueue {
   private readonly createId: () => string;
   private readonly now: () => number;
@@ -29,6 +46,8 @@ export class MessageQueue {
   constructor(options: MessageQueueOptions = {}) {
     this.createId = options.createId ?? createDefaultId;
     this.now = options.now ?? Date.now;
+
+    this.items.push(...copyQueueItems(options.initialItems ?? []));
   }
 
   add(content: string): QueueItem {
@@ -59,6 +78,10 @@ export class MessageQueue {
 
   clear(): void {
     this.items.length = 0;
+  }
+
+  replace(items: readonly QueueItem[]): void {
+    this.items.splice(0, this.items.length, ...copyQueueItems(items));
   }
 
   move(id: string, toIndex: number): boolean {

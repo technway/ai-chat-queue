@@ -20,19 +20,42 @@ export class QueueDrainer {
   private armed = true;
   private halted = false;
   private inFlight = false;
+  private paused = false;
   private retryRequested = false;
   private stopped = false;
 
   constructor(private readonly options: QueueDrainerOptions) {}
 
   markGenerating(): void {
-    if (!this.halted && !this.stopped) {
+    if (!this.halted && !this.paused && !this.stopped) {
       this.armed = true;
     }
   }
 
-  async drainNext(): Promise<void> {
+  pause(): void {
+    this.paused = true;
+  }
+
+  resume(): void {
+    if (!this.halted && !this.stopped) {
+      this.paused = false;
+      this.armed = true;
+    }
+  }
+
+  reset(paused = false): void {
     if (this.stopped) {
+      return;
+    }
+
+    this.armed = true;
+    this.halted = false;
+    this.paused = paused;
+    this.retryRequested = false;
+  }
+
+  async drainNext(): Promise<void> {
+    if (this.paused || this.stopped) {
       return;
     }
 

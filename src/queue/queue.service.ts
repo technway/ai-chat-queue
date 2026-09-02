@@ -8,7 +8,7 @@ export type QueueServiceEvent =
       readonly state: QueueState;
     }
   | {
-      readonly type: "cleared";
+      readonly type: "cleared" | "replaced";
       readonly state: QueueState;
     };
 
@@ -52,6 +52,14 @@ export class QueueService {
 
     this.notify({
       type: "cleared",
+      state: this.queue.getState(),
+    });
+  }
+
+  replace(items: readonly QueueItem[]): void {
+    this.queue.replace(items);
+    this.notify({
+      type: "replaced",
       state: this.queue.getState(),
     });
   }

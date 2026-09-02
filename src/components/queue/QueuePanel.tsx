@@ -1,27 +1,35 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { QueueService } from "../../queue/queue.service";
-import type { QueueItem as QueueItemData } from "../../queue/queue.types";
+import type {
+  QueueItem as QueueItemData,
+  QueueState,
+} from "../../queue/queue.types";
 import { QueueBadge } from "./QueueBadge";
-import { ChevronIcon, MoreIcon } from "./QueueIcons";
+import { ChevronIcon, MoreIcon, QueueControlIcon } from "./QueueIcons";
 import { QueueItem } from "./QueueItem";
 
 export interface QueuePanelProps {
   readonly queue: QueueService;
+  readonly state?: QueueState;
+  readonly initialCollapsed?: boolean;
+  readonly paused?: boolean;
+  readonly onCollapsedChange?: (collapsed: boolean) => void;
+  readonly onPausedChange?: (paused: boolean) => void;
 }
 
 function isVisibleItem(item: QueueItemData): boolean {
   return item.status !== "sent";
 }
 
-export function QueuePanel({ queue }: QueuePanelProps) {
-  const [state, setState] = useState(() => queue.getState());
-  const [collapsed, setCollapsed] = useState(false);
-
-  useEffect(() => {
-    const unsubscribe = queue.subscribe((event) => setState(event.state));
-    setState(queue.getState());
-    return unsubscribe;
-  }, [queue]);
+export function QueuePanel({
+  queue,
+  state = queue.getState(),
+  initialCollapsed = false,
+  paused = false,
+  onCollapsedChange,
+  onPausedChange,
+}: QueuePanelProps) {
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
 
   const items = state.items.filter(isVisibleItem);
 
@@ -43,8 +51,18 @@ export function QueuePanel({ queue }: QueuePanelProps) {
       </h2>
 
       <div className="queue-toolbar">
-        <QueueBadge count={items.length} sending={isSending} />
+        <QueueBadge count={items.length} paused={paused} sending={isSending} />
         <div className="queue-toolbar-actions">
+          <button
+            className="queue-icon-button"
+            type="button"
+            aria-label={paused ? "Resume queue" : "Pause queue"}
+            title={paused ? "Resume queue" : "Pause queue"}
+            onClick={() => onPausedChange?.(!paused)}
+          >
+            <QueueControlIcon paused={paused} />
+          </button>
+
           <details className="queue-actions">
             <summary
               className="queue-icon-button"
@@ -72,7 +90,13 @@ export function QueuePanel({ queue }: QueuePanelProps) {
             aria-controls="queue-message-list"
             aria-label={collapsed ? "Expand queue" : "Minimize queue"}
             title={collapsed ? "Expand queue" : "Minimize queue"}
-            onClick={() => setCollapsed((value) => !value)}
+            onClick={() =>
+              setCollapsed((value) => {
+                const nextValue = !value;
+                onCollapsedChange?.(nextValue);
+                return nextValue;
+              })
+            }
           >
             <ChevronIcon collapsed={collapsed} />
           </button>

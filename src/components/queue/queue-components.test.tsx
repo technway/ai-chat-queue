@@ -34,6 +34,21 @@ describe("queue components", () => {
     expect(html).toContain('aria-expanded="true"');
   });
 
+  it("renders the supplied queue snapshot", () => {
+    const queue = new QueueService();
+    const emptyState = queue.getState();
+    queue.enqueue("Queued after the UI mounted");
+
+    expect(
+      renderToStaticMarkup(<QueuePanel queue={queue} state={emptyState} />),
+    ).toBe("");
+    expect(
+      renderToStaticMarkup(
+        <QueuePanel queue={queue} state={queue.getState()} />,
+      ),
+    ).toContain("Queued after the UI mounted");
+  });
+
   it("announces sending status and disables unsafe controls", () => {
     const item: QueueItemData = {
       id: "message-1",
@@ -55,5 +70,29 @@ describe("queue components", () => {
     expect(row).toContain("Sending");
     expect(row).toContain("disabled");
     expect(panel).toContain('disabled="" aria-label="Clear queued messages"');
+  });
+
+  it("restores the minimized preference", () => {
+    const queue = new QueueService();
+    queue.enqueue("Queued message");
+
+    const html = renderToStaticMarkup(
+      <QueuePanel queue={queue} initialCollapsed />,
+    );
+
+    expect(html).toContain('data-collapsed="true"');
+    expect(html).toContain('aria-label="Expand queue"');
+    expect(html).toContain('aria-expanded="false"');
+    expect(html).toContain('hidden=""');
+  });
+
+  it("shows when automatic sending is paused", () => {
+    const queue = new QueueService();
+    queue.enqueue("Wait for resume");
+
+    const html = renderToStaticMarkup(<QueuePanel queue={queue} paused />);
+
+    expect(html).toContain("1 queued, paused");
+    expect(html).toContain('aria-label="Resume queue"');
   });
 });

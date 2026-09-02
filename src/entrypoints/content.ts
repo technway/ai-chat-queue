@@ -7,8 +7,23 @@ import { CHATGPT_SELECTORS } from "../adapters/chatgpt/selectors";
 import { QueuePanel } from "../components/queue/QueuePanel";
 import "../components/queue/queue.css";
 import { ChatGptSendIntegration } from "../integrations/chatgpt/send-integration";
+import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
 import { QueueDrainer } from "../queue/queue-drainer";
+import {
+  createConversationQueueStorage,
+  createQueueStorageForScope,
+  getConversationScope,
+} from "../storage/queue-storage";
+
+function appendQueueHost(anchor: Element, shadowHost: Element): void {
+  // A form fallback must remain intact because replacing it breaks submission.
+  if (anchor.matches("form")) {
+    anchor.before(shadowHost);
+  } else {
+    anchor.prepend(shadowHost);
+  }
+}
 
 export default defineContentScript({
   matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
@@ -18,7 +33,38 @@ export default defineContentScript({
 
     const generationState = new ChatGptAdapter({ root: document });
     const composer = new ChatGptComposerAdapter(document);
-    const queue = new QueueService();
+    let queueScope = getConversationScope(new URL(location.href));
+    let queueStorage = createConversationQueueStorage(new URL(location.href));
+    const restored = await queueStorage.load();
+    console.log("[message-queue] queue storage ready", {
+      count: restored.items.length,
+      scope: queueScope,
+    });
+    let settings = {
+      ...restored.settings,
+      // Restored messages always wait for an explicit resume after a reload.
+      paused: restored.items.length > 0 || restored.settings.paused,
+    };
+    let preferences = restored.preferences;
+    const queue = new QueueService(
+      new MessageQueue({ initialItems: restored.items }),
+    );
+    const composerContainerSelector =
+      CHATGPT_SELECTORS.composerContainer.join(",");
+    let refreshQueueUi = () => {};
+    let switchingConversation = false;
+    let requestConversationSwitch: (scope: string) => void = () => {};
+
+    const stopStorageSubscription = queue.subscribe((event) => {
+      const currentScope = getConversationScope(new URL(location.href));
+
+      if (switchingConversation || currentScope !== queueScope) {
+        requestConversationSwitch(currentScope);
+        return;
+      }
+
+      queueStorage.save(event.state, settings, preferences);
+    });
 
     const integration = new ChatGptSendIntegration({
       composer,
@@ -29,10 +75,91 @@ export default defineContentScript({
       queue,
       sender: composer,
     });
+
+    if (settings.paused) {
+      drainer.pause();
+      queueStorage.save(queue.getState(), settings, preferences);
+    }
+
+    const switchConversation = async (targetScope: string) => {
+      const previousStorage = queueStorage;
+      const previousItemIds = new Set(
+        queue.getState().items.map((item) => item.id),
+      );
+
+      previousStorage.save(queue.getState(), settings, preferences);
+      await previousStorage.flush();
+
+      const nextStorage = createQueueStorageForScope(targetScope);
+      const nextSnapshot = await nextStorage.load();
+      const latestScope = getConversationScope(new URL(location.href));
+
+      if (latestScope !== targetScope) {
+        switchingConversation = false;
+        requestConversationSwitch(latestScope);
+        return;
+      }
+
+      // Inputs queued during navigation belong to the newly opened chat.
+      const restoredIds = new Set(nextSnapshot.items.map((item) => item.id));
+      const newlyQueuedItems = queue
+        .getState()
+        .items.filter(
+          (item) => !previousItemIds.has(item.id) && !restoredIds.has(item.id),
+        );
+
+      queueScope = targetScope;
+      queueStorage = nextStorage;
+      preferences = nextSnapshot.preferences;
+      settings = {
+        ...nextSnapshot.settings,
+        paused: nextSnapshot.items.length > 0 || nextSnapshot.settings.paused,
+      };
+
+      drainer.reset(settings.paused);
+
+      switchingConversation = false;
+      queue.replace([...nextSnapshot.items, ...newlyQueuedItems]);
+      refreshQueueUi();
+      console.log("[message-queue] queue conversation changed", {
+        count: queue.getState().total,
+        scope: queueScope,
+      });
+
+      if (!settings.paused) {
+        queueMicrotask(drainIfReady);
+      }
+    };
+
+    requestConversationSwitch = (targetScope) => {
+      if (targetScope === queueScope || switchingConversation) {
+        return;
+      }
+
+      switchingConversation = true;
+      drainer.pause();
+      void switchConversation(targetScope);
+    };
+
+    const isCurrentConversation = () => {
+      const currentScope = getConversationScope(new URL(location.href));
+
+      if (!switchingConversation && currentScope === queueScope) {
+        return true;
+      }
+
+      requestConversationSwitch(currentScope);
+      return false;
+    };
     const drainIfReady = () => {
       const state = generationState.getState();
 
-      if (state === "available" || state === "unavailable") {
+      if (
+        isCurrentConversation() &&
+        settings.autoSend &&
+        !settings.paused &&
+        (state === "available" || state === "unavailable")
+      ) {
         void drainer.drainNext();
       }
     };
@@ -53,8 +180,15 @@ export default defineContentScript({
       if (state === "generating") {
         // Restore any draft that was preserved during automatic submission.
         void composer.restoreDraft();
-        drainer.markGenerating();
-      } else if (state === "available" || state === "unavailable") {
+        if (isCurrentConversation() && settings.autoSend && !settings.paused) {
+          drainer.markGenerating();
+        }
+      } else if (
+        isCurrentConversation() &&
+        settings.autoSend &&
+        !settings.paused &&
+        (state === "available" || state === "unavailable")
+      ) {
         // The unavailable phase stages text. The available phase submits it.
         void drainer.drainNext();
       }
@@ -63,39 +197,112 @@ export default defineContentScript({
     const ui = await createShadowRootUi(ctx, {
       name: "chatgpt-message-queue",
       position: "inline",
-      anchor: CHATGPT_SELECTORS.composerContainer.join(","),
+      anchor: composerContainerSelector,
       append(anchor, shadowHost) {
-        // Composer wrappers can grow upward. A form fallback must remain intact.
-        if (anchor.matches("form")) {
-          anchor.before(shadowHost);
-        } else {
-          anchor.prepend(shadowHost);
-        }
+        appendQueueHost(anchor, shadowHost);
       },
       inheritStyles: true,
       isolateEvents: true,
       onMount(container, _shadow, shadowHost) {
+        // The host must participate in ChatGPT's composer layout.
+        shadowHost.style.setProperty("display", "block", "important");
+        shadowHost.style.setProperty("width", "100%", "important");
+        shadowHost.style.setProperty("flex", "none", "important");
+
         console.log("[message-queue] queue UI mounted", {
           parent: shadowHost.parentElement?.className || null,
         });
 
         const root = createRoot(container);
-        root.render(createElement(QueuePanel, { queue }));
-        return root;
+        const renderQueue = (state = queue.getState()) => {
+          root.render(
+            createElement(QueuePanel, {
+              queue,
+              state,
+              initialCollapsed: preferences.collapsed,
+              paused: settings.paused,
+              onCollapsedChange(collapsed) {
+                preferences = { ...preferences, collapsed };
+                queueStorage.save(queue.getState(), settings, preferences);
+              },
+              onPausedChange(paused) {
+                if (!isCurrentConversation()) {
+                  return;
+                }
+
+                settings = { ...settings, paused };
+
+                if (paused) {
+                  drainer.pause();
+                } else {
+                  drainer.resume();
+                }
+
+                queueStorage.save(queue.getState(), settings, preferences);
+                renderQueue();
+
+                if (!paused) {
+                  queueMicrotask(drainIfReady);
+                }
+              },
+            }),
+          );
+        };
+
+        // Subscribe here so queue updates are not dependent on React effect timing.
+        const stopRendering = queue.subscribe((event) => {
+          renderQueue(event.state);
+        });
+        refreshQueueUi = renderQueue;
+        renderQueue();
+
+        return {
+          unmount() {
+            refreshQueueUi = () => {};
+            stopRendering();
+            root.unmount();
+          },
+        };
       },
       onRemove(root) {
         root?.unmount();
       },
     });
 
-    // ChatGPT replaces its composer during navigation and state changes.
-    ui.autoMount();
+    const ensureQueueUi = () => {
+      isCurrentConversation();
+      const anchor = document.querySelector(composerContainerSelector);
+
+      if (!anchor) {
+        return;
+      }
+
+      if (!ui.mounted) {
+        ui.mount();
+        return;
+      }
+
+      if (!ui.shadowHost.isConnected) {
+        // ChatGPT can remove unknown footer children without replacing the footer.
+        appendQueueHost(anchor, ui.shadowHost);
+        console.log("[message-queue] queue UI reattached", {
+          parent: ui.shadowHost.parentElement?.className || null,
+        });
+      }
+    };
+
+    const uiObserver = new MutationObserver(ensureQueueUi);
+    uiObserver.observe(document.body, { childList: true, subtree: true });
+    ensureQueueUi();
 
     ctx.onInvalidated(() => {
+      uiObserver.disconnect();
       drainer.stop();
       stopIntegration();
       stopObserving();
       stopQueueSubscription();
+      stopStorageSubscription();
+      void queueStorage.flush();
     });
   },
 });

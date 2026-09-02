@@ -67,3 +67,27 @@ export function MoreIcon() {
     </svg>
   );
 }
+
+export function QueueControlIcon({ paused }: { readonly paused: boolean }) {
+  return (
+    <svg
+      className="queue-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      {paused ? (
+        <path d="m9 7 8 5-8 5V7Z" />
+      ) : (
+        <>
+          <path d="M9 7v10" />
+          <path d="M15 7v10" />
+        </>
+      )}
+    </svg>
+  );
+}

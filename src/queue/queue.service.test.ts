@@ -116,4 +116,27 @@ describe("QueueService", () => {
       expect.objectContaining({ id: sending.id, status: "sending" }),
     ]);
   });
+
+  it("replaces queue state and notifies subscribers", () => {
+    const service = new QueueService();
+    service.enqueue("Previous conversation");
+    const listener = vi.fn();
+    service.subscribe(listener);
+    const items = [
+      {
+        id: "restored",
+        content: "Current conversation",
+        createdAt: 123,
+        status: "pending" as const,
+      },
+    ];
+
+    service.replace(items);
+
+    expect(service.getState().items).toEqual(items);
+    expect(listener).toHaveBeenCalledWith({
+      type: "replaced",
+      state: expect.objectContaining({ items }),
+    });
+  });
 });
