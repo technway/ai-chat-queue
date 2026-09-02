@@ -1,6 +1,8 @@
-# ChatGPT Message Queue
-
-A browser extension built with WXT, React, and TypeScript.
+<div align="center">
+  <img src="./src/assets/logo.png" alt="ChatGPT Message Queue logo" width="128" />
+	<h1>ChatGPT Message Queue</h1>
+	<p>A browser extension built with WXT, React, and TypeScript.</p>
+</div>
 
 ## Setup
 
