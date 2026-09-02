@@ -33,4 +33,12 @@ export const CHATGPT_SELECTORS = {
     'button[aria-label="Pause streaming"]',
     'button[aria-label="Pause generating"]',
   ],
+  loggedOut: ["[data-logged-out]"],
+  temporaryChat: [
+    '[data-temporary-chat="true"]',
+    '[data-temporary-chat=""]',
+    '[data-testid="temporary-chat-active"]',
+    '[data-testid="temporary-chat-button"][aria-pressed="true"]',
+    '[aria-label*="Temporary chat" i][aria-pressed="true"]',
+  ],
 } as const;

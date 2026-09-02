@@ -31,6 +31,15 @@ export interface QueueStorageItem {
   setValue(value: unknown): Promise<void>;
 }
 
+interface RemovableQueueStorageItem extends QueueStorageItem {
+  removeValue(): Promise<void>;
+}
+
+export interface QueueScopeContext {
+  readonly loggedOut?: boolean;
+  readonly temporary?: boolean;
+}
+
 function createDefaultSnapshot(): QueueStorageSnapshot {
   return {
     items: [],
@@ -129,42 +138,87 @@ function toPersistedState(
   };
 }
 
-export function getConversationScope(url: URL): string {
-  const findConversationId = (value: string): string | undefined => {
+function hasTemporaryChatFlag(url: URL): boolean {
+  const names = ["temporary-chat", "temporary_chat", "temporary"];
+
+  return names.some((name) => {
+    if (!url.searchParams.has(name)) {
+      return false;
+    }
+
+    const value = url.searchParams.get(name)?.toLowerCase();
+    return value !== "false" && value !== "0";
+  });
+}
+
+export function getConversationScope(
+  url: URL,
+  context: QueueScopeContext = {},
+): string {
+  const findConversation = (
+    value: string,
+  ): { id: string; route: "c" | "uc" } | undefined => {
     const segments = value.split("/").filter(Boolean);
 
     for (let index = segments.length - 2; index >= 0; index -= 1) {
-      if (segments[index] === "c" || segments[index] === "uc") {
-        return segments[index + 1];
+      const route = segments[index];
+      const id = segments[index + 1];
+
+      if ((route === "c" || route === "uc") && id) {
+        return {
+          id,
+          route,
+        };
       }
     }
 
     return undefined;
   };
-  const pathId = findConversationId(url.pathname);
+  const pathConversation = findConversation(url.pathname);
   const hashValue = url.hash.slice(1);
-  const hashId = findConversationId(hashValue);
+  const hashConversation = findConversation(hashValue);
   const hashParams = new URLSearchParams(hashValue.replace(/^\?/, ""));
   const queryId =
     url.searchParams.get("conversationId") ??
     url.searchParams.get("conversation_id") ??
     hashParams.get("conversationId") ??
     hashParams.get("conversation_id");
-  const conversationId = pathId ?? hashId ?? queryId;
+  const conversation =
+    pathConversation ??
+    hashConversation ??
+    (queryId ? { id: queryId, route: "c" as const } : undefined);
+  const normalizedPath = url.pathname.replace(/\/+$/, "") || "/";
+  const scopeId = conversation?.id ?? normalizedPath;
+  const temporary =
+    context.temporary === true ||
+    hasTemporaryChatFlag(url) ||
+    url.pathname.includes("/temporary-chat");
 
-  if (conversationId) {
-    return `conversation:${conversationId}`;
+  if (temporary) {
+    return `temporary:${scopeId}`;
   }
 
-  const normalizedPath = url.pathname.replace(/\/+$/, "") || "/";
+  if (context.loggedOut === true || conversation?.route === "uc") {
+    return `unauthenticated:${scopeId}`;
+  }
+
+  if (conversation) {
+    return `conversation:${conversation.id}`;
+  }
+
   return `page:${normalizedPath}`;
+}
+
+export function isPersistentQueueScope(scope: string): boolean {
+  // Only server backed chats have a stable identity across page reloads.
+  return scope.startsWith("conversation:");
 }
 
 export function getQueueStorageKey(scope: string): `local:${string}` {
   return `local:message-queue:${encodeURIComponent(scope)}`;
 }
 
-function createWxtStorageItem(scope: string): QueueStorageItem {
+function createWxtStorageItem(scope: string): RemovableQueueStorageItem {
   const fallback: PersistedQueueState = {
     schemaVersion: QUEUE_SCHEMA_VERSION,
     ...createDefaultSnapshot(),
@@ -186,12 +240,53 @@ function createWxtStorageItem(scope: string): QueueStorageItem {
   });
 }
 
+function getEphemeralStorageScopes(scope: string): string[] {
+  const scopes = [scope];
+  const separatorIndex = scope.indexOf(":");
+  const kind = scope.slice(0, separatorIndex);
+  const id = scope.slice(separatorIndex + 1);
+
+  // Older versions stored temporary and unauthenticated chat IDs as durable chats.
+  if ((kind === "temporary" || kind === "unauthenticated") && id !== "/") {
+    scopes.push(`conversation:${id}`);
+  }
+
+  return scopes;
+}
+
+function createEphemeralStorageItem(scope: string): QueueStorageItem {
+  return {
+    async getValue() {
+      for (const staleScope of getEphemeralStorageScopes(scope)) {
+        try {
+          await createWxtStorageItem(staleScope).removeValue();
+        } catch (error) {
+          console.error("[message-queue] queue storage removal failed", {
+            error,
+            scope: staleScope,
+          });
+        }
+      }
+
+      return {
+        schemaVersion: QUEUE_SCHEMA_VERSION,
+        ...createDefaultSnapshot(),
+      };
+    },
+    async setValue() {},
+  };
+}
+
 export function createConversationQueueStorage(url: URL): QueueStorage {
   return createQueueStorageForScope(getConversationScope(url));
 }
 
 export function createQueueStorageForScope(scope: string): QueueStorage {
-  return new QueueStorage(createWxtStorageItem(scope));
+  const item = isPersistentQueueScope(scope)
+    ? createWxtStorageItem(scope)
+    : createEphemeralStorageItem(scope);
+
+  return new QueueStorage(item);
 }
 
 export class QueueStorage {

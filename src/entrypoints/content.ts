@@ -11,9 +11,9 @@ import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
 import { QueueDrainer } from "../queue/queue-drainer";
 import {
-  createConversationQueueStorage,
   createQueueStorageForScope,
   getConversationScope,
+  isPersistentQueueScope,
 } from "../storage/queue-storage";
 
 function appendQueueHost(anchor: Element, shadowHost: Element): void {
@@ -25,6 +25,16 @@ function appendQueueHost(anchor: Element, shadowHost: Element): void {
   }
 }
 
+function getCurrentQueueScope(): string {
+  const matches = (selectors: readonly string[]) =>
+    document.querySelector(selectors.join(",")) !== null;
+
+  return getConversationScope(new URL(location.href), {
+    loggedOut: matches(CHATGPT_SELECTORS.loggedOut),
+    temporary: matches(CHATGPT_SELECTORS.temporaryChat),
+  });
+}
+
 export default defineContentScript({
   matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
   cssInjectionMode: "ui",
@@ -33,11 +43,12 @@ export default defineContentScript({
 
     const generationState = new ChatGptAdapter({ root: document });
     const composer = new ChatGptComposerAdapter(document);
-    let queueScope = getConversationScope(new URL(location.href));
-    let queueStorage = createConversationQueueStorage(new URL(location.href));
+    let queueScope = getCurrentQueueScope();
+    let queueStorage = createQueueStorageForScope(queueScope);
     const restored = await queueStorage.load();
     console.log("[message-queue] queue storage ready", {
       count: restored.items.length,
+      persistent: isPersistentQueueScope(queueScope),
       scope: queueScope,
     });
     let settings = {
@@ -56,7 +67,7 @@ export default defineContentScript({
     let requestConversationSwitch: (scope: string) => void = () => {};
 
     const stopStorageSubscription = queue.subscribe((event) => {
-      const currentScope = getConversationScope(new URL(location.href));
+      const currentScope = getCurrentQueueScope();
 
       if (switchingConversation || currentScope !== queueScope) {
         requestConversationSwitch(currentScope);
@@ -92,7 +103,7 @@ export default defineContentScript({
 
       const nextStorage = createQueueStorageForScope(targetScope);
       const nextSnapshot = await nextStorage.load();
-      const latestScope = getConversationScope(new URL(location.href));
+      const latestScope = getCurrentQueueScope();
 
       if (latestScope !== targetScope) {
         switchingConversation = false;
@@ -142,7 +153,7 @@ export default defineContentScript({
     };
 
     const isCurrentConversation = () => {
-      const currentScope = getConversationScope(new URL(location.href));
+      const currentScope = getCurrentQueueScope();
 
       if (!switchingConversation && currentScope === queueScope) {
         return true;
