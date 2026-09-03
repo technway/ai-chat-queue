@@ -1,132 +1,54 @@
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronUp,
+  CornerDownRight,
+  GripVertical,
+  Pause,
+  Pencil,
+  Play,
+  Trash2,
+} from "lucide-react";
+
+const iconProps = {
+  className: "queue-icon",
+  "aria-hidden": true,
+  strokeWidth: 1.8,
+} as const;
+
 export function QueueIcon() {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M5 4v6a4 4 0 0 0 4 4h10" />
-      <path d="m16 11 3 3-3 3" />
-    </svg>
-  );
+  return <CornerDownRight {...iconProps} />;
+}
+
+export function GripIcon() {
+  return <GripVertical {...iconProps} />;
 }
 
 export function TrashIcon() {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M4 7h16" />
-      <path d="M9 7V4h6v3" />
-      <path d="m6 7 1 13h10l1-13" />
-      <path d="M10 11v5M14 11v5" />
-    </svg>
-  );
+  return <Trash2 {...iconProps} />;
 }
 
 export function PencilIcon() {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m14 5 5 5" />
-      <path d="M5 19h4l10-10a2.12 2.12 0 0 0-3-3L6 16l-1 3Z" />
-    </svg>
-  );
+  return <Pencil {...iconProps} />;
 }
 
 export function ArrowUpIcon() {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 11 6-6 6 6" />
-      <path d="M12 5v14" />
-    </svg>
-  );
+  return <ArrowUp {...iconProps} />;
 }
 
 export function ArrowDownIcon() {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m6 13 6 6 6-6" />
-      <path d="M12 19V5" />
-    </svg>
-  );
+  return <ArrowDown {...iconProps} />;
 }
 
 export function ChevronIcon({ collapsed }: { readonly collapsed: boolean }) {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {collapsed ? <path d="m7 15 5-5 5 5" /> : <path d="m7 9 5 5 5-5" />}
-    </svg>
+  return collapsed ? (
+    <ChevronUp {...iconProps} />
+  ) : (
+    <ChevronDown {...iconProps} />
   );
 }
 
 export function QueueControlIcon({ paused }: { readonly paused: boolean }) {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {paused ? (
-        <path d="m9 7 8 5-8 5V7Z" />
-      ) : (
-        <>
-          <path d="M9 7v10" />
-          <path d="M15 7v10" />
-        </>
-      )}
-    </svg>
-  );
+  return paused ? <Play {...iconProps} /> : <Pause {...iconProps} />;
 }

@@ -153,6 +153,17 @@ describe("QueueService", () => {
     });
   });
 
+  it("moves a queued item before a drop target", () => {
+    const service = new QueueService();
+    const first = service.enqueue("First");
+    const second = service.enqueue("Second");
+    const third = service.enqueue("Third");
+
+    expect(service.moveBefore(third.id, first.id)).toBe(true);
+    expect(service.getState().items).toEqual([third, first, second]);
+    expect(service.moveBefore(third.id, third.id)).toBe(false);
+  });
+
   it("does not edit messages that are sent or sending", () => {
     const service = new QueueService();
     const sending = service.enqueue("Sending now");

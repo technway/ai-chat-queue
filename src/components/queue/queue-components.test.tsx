@@ -34,6 +34,13 @@ describe("queue components", () => {
     expect(html).toContain('aria-label="Move queued message 1 down"');
     expect(html).toContain('aria-label="Move queued message 2 up"');
     expect(html).toContain('aria-label="Edit queued message 1"');
+    expect(html).toContain('aria-label="Drag queued message 1 to reorder"');
+    expect(html).toContain('draggable="true"');
+    expect(html).toContain('aria-posinset="1"');
+    expect(html).toContain('aria-setsize="2"');
+    expect(html).toContain(
+      "Keyboard users can use the move up and move down buttons.",
+    );
     expect(html).toContain('aria-label="Remove queued message 1"');
     expect(html).toContain('aria-label="Minimize queue"');
     expect(html).toContain('aria-expanded="true"');
@@ -67,11 +74,14 @@ describe("queue components", () => {
       <QueueItem
         item={item}
         position={1}
+        total={1}
         canMoveUp={false}
         canMoveDown={false}
         canEdit
+        canDrag={false}
         isEditing={false}
         onMove={vi.fn()}
+        onDropItem={vi.fn()}
         onEditStart={vi.fn()}
         onEditCancel={vi.fn()}
         onEdit={vi.fn(() => true)}

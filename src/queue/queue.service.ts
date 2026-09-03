@@ -122,6 +122,53 @@ export class QueueService {
     return true;
   }
 
+  moveBefore(id: string, targetId: string): boolean {
+    const state = this.queue.getState();
+    const item = state.items.find((candidate) => candidate.id === id);
+    const target = state.items.find((candidate) => candidate.id === targetId);
+
+    if (
+      !item ||
+      !target ||
+      item.id === target.id ||
+      item.status === "sent" ||
+      item.status === "sending" ||
+      target.status === "sent" ||
+      target.status === "sending"
+    ) {
+      return false;
+    }
+
+    const fromIndex = state.items.findIndex((candidate) => candidate.id === id);
+    const targetIndex = state.items.findIndex(
+      (candidate) => candidate.id === targetId,
+    );
+    const toIndex = fromIndex < targetIndex ? targetIndex - 1 : targetIndex;
+    const startIndex = Math.min(fromIndex, targetIndex);
+    const endIndex = Math.max(fromIndex, targetIndex);
+    const crossesProtectedItem = state.items
+      .slice(startIndex, endIndex + 1)
+      .some(
+        (candidate) =>
+          candidate.status === "sent" || candidate.status === "sending",
+      );
+
+    if (crossesProtectedItem || !this.queue.move(id, toIndex)) {
+      return false;
+    }
+
+    const reorderedItem = this.queue
+      .getState()
+      .items.find((candidate) => candidate.id === id);
+
+    if (!reorderedItem) {
+      return false;
+    }
+
+    this.publish("reordered", reorderedItem);
+    return true;
+  }
+
   edit(id: string, content: string): QueueItem | undefined {
     const existingItem = this.queue
       .getState()

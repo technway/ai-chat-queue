@@ -34,7 +34,10 @@
   background: var(--queue-surface);
   border: 1px solid var(--queue-border);
   border-radius: 14px;
-  box-shadow: 0 4px 14px color-mix(in srgb, #000 10%, transparent);
+  box-shadow:
+    0 2px 4px color-mix(in srgb, #000 10%, transparent),
+    0 8px 20px color-mix(in srgb, #000 14%, transparent),
+    0 20px 40px color-mix(in srgb, #000 9%, transparent);
 }
 
 .queue-panel[data-collapsed] {
@@ -98,6 +101,15 @@
   padding: 2px 0;
 }
 
+.queue-item[data-dragging] {
+  opacity: 0.45;
+}
+
+.queue-item[data-drag-over] {
+  background: var(--queue-surface-muted);
+  border-radius: 7px;
+}
+
 .queue-item + .queue-item {
   border-top: 1px solid var(--queue-border);
 }
@@ -111,6 +123,38 @@
 .queue-item > .queue-icon {
   margin-left: 2px;
   color: var(--queue-text-muted);
+}
+
+.queue-item-grip {
+  display: grid;
+  width: 18px;
+  height: 26px;
+  padding: 0;
+  color: var(--queue-text-muted);
+  cursor: grab;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  place-items: center;
+}
+
+.queue-item-grip:hover:not(:disabled) {
+  color: var(--queue-text);
+  background: var(--queue-surface-muted);
+}
+
+.queue-item-grip:focus-visible {
+  outline: 2px solid var(--queue-accent);
+  outline-offset: 1px;
+}
+
+.queue-item-grip:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
+.queue-item-grip:active {
+  cursor: grabbing;
 }
 
 .queue-item-preview {
@@ -235,7 +279,7 @@
   font-weight: 600;
   cursor: pointer;
   background: transparent;
-  border: 1px solid var(--queue-border);
+  border: 0;
   border-radius: 7px;
 }
 

@@ -101,6 +101,25 @@ test("reorders queued messages before sending", async ({ page }) => {
   await expect(queuePanel(page)).toHaveCount(0);
 });
 
+test("reorders queued messages with drag and drop", async ({ page }) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await queueMessage(page, "First queued");
+  await queueMessage(page, "Second queued");
+  await queueMessage(page, "Third queued");
+
+  await queueItems(page)
+    .filter({ hasText: "Third queued" })
+    .getByRole("button", { name: "Drag queued message 3 to reorder" })
+    .dragTo(queueItems(page).filter({ hasText: "First queued" }));
+
+  await expect(queueItems(page).locator(".queue-item-preview")).toHaveText([
+    "Third queued",
+    "First queued",
+    "Second queued",
+  ]);
+});
+
 test("edits a queued message and pauses at its position", async ({ page }) => {
   await openFakeChatGpt(page);
   await startGenerating(page);

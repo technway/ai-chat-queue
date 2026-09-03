@@ -97,10 +97,16 @@ export function QueuePanel({
         </div>
       </div>
 
+      <p id="queue-list-instructions" className="queue-visually-hidden">
+        Messages are sent from top to bottom. Use the move buttons to reorder a
+        message, or drag it onto another message.
+      </p>
+
       <ol
         id="queue-message-list"
         className="queue-list"
         aria-label="Queued messages"
+        aria-describedby="queue-list-instructions"
         hidden={collapsed}
       >
         {items.map((item, index) => (
@@ -108,6 +114,7 @@ export function QueuePanel({
             key={item.id}
             item={item}
             position={index + 1}
+            total={items.length}
             canMoveUp={
               item.status !== "sending" &&
               index > 0 &&
@@ -122,8 +129,10 @@ export function QueuePanel({
               item.status !== "sending" &&
               (editingId === null || editingId === item.id)
             }
+            canDrag={item.status !== "sending" && editingId === null}
             isEditing={editingId === item.id}
             onMove={(id, direction) => queue.move(id, direction)}
+            onDropItem={(id, targetId) => queue.moveBefore(id, targetId)}
             onEditStart={(id) => {
               setEditingId(id);
               onEditingChange?.(id);
