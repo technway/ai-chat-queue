@@ -4,8 +4,90 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: #f5f5f5;
+  color-scheme: dark;
+  background: #0f1014;
 }
 
 body {
   margin: 0;
+  width: 320px;
+  background: #0f1014;
+}
+
+#root {
+  min-height: 100%;
+}
+
+.popup-card {
+  display: flex;
+  box-sizing: border-box;
+  min-height: 280px;
+  padding: 30px 24px 28px;
+  align-items: center;
+  flex-direction: column;
+  background: linear-gradient(180deg, #1a1b20 0%, #0f1014 100%);
+  text-align: center;
+}
+
+.popup-logo {
+  width: 64px;
+  height: 64px;
+  margin-bottom: 18px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 16px;
+}
+
+h1 {
+  margin: 0;
+  color: #f5f5f5;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+p {
+  max-width: 260px;
+  margin: 11px 0 22px;
+  color: #a1a1aa;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.github-link {
+  display: inline-flex;
+  min-height: 38px;
+  box-sizing: border-box;
+  padding: 0 19px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #f5f5f5;
+  border-radius: 11px;
+  color: #202123;
+  background: #f5f5f5;
+  box-shadow: 0 3px 8px rgb(0 0 0 / 35%);
+  font-size: 14px;
+  font-weight: 650;
+  text-decoration: none;
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.github-link:hover {
+  background: #fff;
+  box-shadow: 0 5px 12px rgb(0 0 0 / 45%);
+  transform: translateY(-1px);
+}
+
+.github-link:focus-visible {
+  outline: 2px solid #10a37f;
+  outline-offset: 2px;
+}
+
+.github-link span {
+  color: #f5c451;
+  font-size: 15px;
 }
