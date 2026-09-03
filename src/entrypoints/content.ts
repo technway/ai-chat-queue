@@ -51,6 +51,16 @@ async function waitForPageHydration(): Promise<void> {
   await waitForAnimationFrame();
 }
 
+function syncQueueTheme(shadowHost: HTMLElement): void {
+  const theme = document.documentElement.dataset.theme;
+
+  if (theme === "light" || theme === "dark") {
+    shadowHost.dataset.theme = theme;
+  } else {
+    delete shadowHost.dataset.theme;
+  }
+}
+
 function getCurrentQueueScope(): string {
   const matches = (selectors: readonly string[]) =>
     document.querySelector(selectors.join(",")) !== null;
@@ -247,6 +257,7 @@ export default defineContentScript({
         shadowHost.style.setProperty("display", "block", "important");
         shadowHost.style.setProperty("width", "100%", "important");
         shadowHost.style.setProperty("flex", "none", "important");
+        syncQueueTheme(shadowHost);
 
         console.log("[message-queue] queue UI mounted", {
           parent: shadowHost.parentElement?.className || null,
@@ -323,6 +334,7 @@ export default defineContentScript({
 
     const ensureQueueUi = () => {
       isCurrentConversation();
+      syncQueueTheme(ui.shadowHost);
       const anchor = document.querySelector(composerContainerSelector);
 
       if (!anchor) {
@@ -345,10 +357,18 @@ export default defineContentScript({
 
     const uiObserver = new MutationObserver(ensureQueueUi);
     uiObserver.observe(document.body, { childList: true, subtree: true });
+    const themeObserver = new MutationObserver(() => {
+      syncQueueTheme(ui.shadowHost);
+    });
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
     ensureQueueUi();
 
     ctx.onInvalidated(() => {
       uiObserver.disconnect();
+      themeObserver.disconnect();
       drainer.stop();
       stopIntegration();
       stopObserving();
