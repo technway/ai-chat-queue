@@ -1,8 +1,8 @@
 {
-  "name": "wxt-react-starter",
-  "description": "manifest.json description",
+  "name": "chatgpt-message-queue",
+  "description": "Queue ChatGPT messages while a response is generating.",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "packageManager": "pnpm@10.33.2",
   "scripts": {
