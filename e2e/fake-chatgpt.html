@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Fake ChatGPT</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 2rem;
+      }
+
+      #sent-messages {
+        min-height: 2rem;
+      }
+    </style>
+  </head>
+  <body data-testid="fake-chatgpt-page">
+    <main>
+      <h1>Fake ChatGPT</h1>
+      <p>Generation state: <strong data-testid="generation-state">available</strong></p>
+      <button type="button" data-testid="fake-start-generating">
+        Start generating
+      </button>
+      <button type="button" data-testid="fake-finish-generating" disabled>
+        Finish generating
+      </button>
+
+      <ol id="sent-messages" aria-label="Sent messages"></ol>
+
+      <form id="composer-container" data-testid="composer">
+        <textarea
+          id="prompt-textarea"
+          data-testid="prompt-textarea"
+          aria-label="Message"
+        ></textarea>
+        <button
+          id="send-button"
+          data-testid="send-button"
+          type="button"
+        >
+          Send
+        </button>
+        <button
+          id="stop-button"
+          data-testid="stop-button"
+          type="button"
+          hidden
+        >
+          Stop
+        </button>
+      </form>
+    </main>
+
+    <script>
+      const composer = document.querySelector("#prompt-textarea");
+      const sendButton = document.querySelector("#send-button");
+      const stopButton = document.querySelector("#stop-button");
+      const stateLabel = document.querySelector("[data-testid=\"generation-state\"]");
+      const startButton = document.querySelector("[data-testid=\"fake-start-generating\"]");
+      const finishButton = document.querySelector("[data-testid=\"fake-finish-generating\"]");
+      const sentMessages = document.querySelector("#sent-messages");
+
+      let state = "available";
+      let finishTimer;
+
+      function setState(nextState, autoFinish = false) {
+        state = nextState;
+        const generating = state === "generating";
+
+        stateLabel.textContent = state;
+        sendButton.disabled = generating;
+        stopButton.hidden = !generating;
+        startButton.disabled = generating;
+        finishButton.disabled = !generating;
+        document.body.dataset.generationState = state;
+
+        if (finishTimer) {
+          clearTimeout(finishTimer);
+          finishTimer = undefined;
+        }
+
+        if (autoFinish) {
+          finishTimer = setTimeout(() => setState("available"), 80);
+        }
+      }
+
+      function finishGeneration() {
+        setState("available");
+      }
+
+      function sendMessage() {
+        if (state !== "available") {
+          return;
+        }
+
+        const content = composer.value.trim();
+
+        if (!content) {
+          return;
+        }
+
+        const message = document.createElement("li");
+        message.textContent = content;
+        sentMessages.append(message);
+        composer.value = "";
+        composer.dispatchEvent(new Event("input", { bubbles: true }));
+        setState("generating", true);
+      }
+
+      sendButton.addEventListener("click", sendMessage);
+      stopButton.addEventListener("click", finishGeneration);
+      startButton.addEventListener("click", () => setState("generating"));
+      finishButton.addEventListener("click", finishGeneration);
+      composer.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+
+      setState("available");
+    </script>
+  </body>
+</html>

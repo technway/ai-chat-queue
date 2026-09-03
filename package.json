@@ -16,6 +16,7 @@
     "check": "biome check .",
     "format": "biome format --write .",
     "test": "vitest run",
+    "test:e2e": "pnpm build && pnpm exec playwright test",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
+    "@playwright/test": "^1.62.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",

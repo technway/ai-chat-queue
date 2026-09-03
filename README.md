@@ -55,6 +55,7 @@ pnpm dev:firefox      Start the Firefox development build
 pnpm build            Build the Chrome extension
 pnpm build:firefox    Build the Firefox extension
 pnpm test             Run unit tests
+pnpm test:e2e         Build the extension and run browser E2E tests
 pnpm check            Run Biome checks
 pnpm format           Format files with Biome
 pnpm compile          Type-check without emitting files
@@ -63,3 +64,19 @@ pnpm zip:firefox      Create a Firefox distribution archive
 ```
 
 GitHub Actions runs the checks, tests, and build for pull requests targeting `main` and pushes to `main`.
+
+## Browser E2E tests
+
+The browser tests load the built extension into Chromium and serve a local fake ChatGPT page. They do not connect to ChatGPT.
+
+Install the Playwright browser once on a new machine:
+
+```bash
+pnpm exec playwright install chromium
+```
+
+Run the extension E2E suite:
+
+```bash
+pnpm test:e2e
+```
