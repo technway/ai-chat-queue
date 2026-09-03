@@ -1,33 +1,72 @@
+import { ArrowUpRight, Star } from "lucide-react";
 import logoUrl from "../../assets/logo.png";
 
 const repositoryUrl = "https://github.com/technway/chatgpt-message-queue";
 
 function App() {
   return (
-    <main className="flex min-h-[280px] flex-col items-center bg-gradient-to-b from-[#1a1b20] to-[#0f1014] px-6 pb-7 pt-[30px] text-center text-[#f5f5f5]">
-      <img
-        className="mb-[18px] size-16 rounded-2xl border border-[rgb(255_255_255_/_18%)]"
-        src={logoUrl}
-        alt="ChatGPT Message Queue logo"
-      />
-      <h1>ChatGPT Message Queue</h1>
-      <p className="m-[11px_0_5px] max-w-[260px] text-[15px] font-semibold leading-[1.35] text-[#f5f5f5]">
-        Press Enter. Keep the conversation moving.
-      </p>
-      <p className="m-0 mb-[22px] max-w-[260px] text-[14px] leading-[1.5] text-[#a1a1aa]">
-        Queue follow-up messages while ChatGPT is generating, then send them in
-        order when it is ready.
-      </p>
+    <main className="flex min-h-75 flex-col overflow-hidden bg-popup-surface p-8! text-popup-text">
+      <header className="flex items-center gap-3">
+        <img
+          className="size-11 shrink-0 rounded-full border border-popup-border object-contain"
+          src={logoUrl}
+          alt="ChatGPT Message Queue logo"
+        />
+        <div className="min-w-0 text-left">
+          <h1 className="m-0 truncate text-base font-bold tracking-[-.02em]">
+            Message Queue
+          </h1>
+        </div>
+      </header>
+
+      <section className="mt-8 text-left">
+        <h2 className="m-0 text-[23px] font-bold leading-[1.12] tracking-[-.04em]">
+          Queue the next steps
+          <br />
+          while ChatGPT is still
+          <br />
+          working.
+        </h2>
+        <ol className="m-0 mt-4 grid list-none gap-2.5 p-0 text-[13px] leading-[1.4] text-popup-muted">
+          <li className="flex items-start gap-2.5">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
+              1
+            </span>
+            <span>Open ChatGPT and start a conversation.</span>
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
+              2
+            </span>
+            <span>
+              Press{" "}
+              <kbd className="rounded-md border border-popup-border bg-white px-1.5 py-0.5 font-mono text-[11px] text-popup-kbd-text shadow-popup-key">
+                Enter
+              </kbd>{" "}
+              while ChatGPT is generating.
+            </span>
+          </li>
+          <li className="flex items-start gap-2.5">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
+              3
+            </span>
+            <span>Your message waits, then sends automatically.</span>
+          </li>
+        </ol>
+      </section>
+
       <a
-        className="inline-flex min-h-[38px] items-center gap-[7px] rounded-[11px] border border-[#f5f5f5] bg-[#f5f5f5] px-[19px] text-[14px] font-semibold text-[#202123] no-underline shadow-[0_3px_8px_rgb(0_0_0_/_35%)] transition duration-120 ease-in-out hover:-translate-y-px hover:bg-white hover:shadow-[0_5px_12px_rgb(0_0_0_/_45%)] focus-visible:outline-2 focus-visible:outline-[#10a37f] focus-visible:outline-offset-2"
+        className="mt-4 inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-popup-button bg-popup-button px-4 text-[13px] font-semibold text-white no-underline shadow-popup-button transition duration-150 ease-out hover:-translate-y-px hover:bg-popup-button-hover hover:shadow-popup-button-hover focus-visible:outline-2 focus-visible:outline-popup-accent focus-visible:outline-offset-2"
         href={repositoryUrl}
         target="_blank"
         rel="noreferrer"
       >
-        <span className="text-[15px] text-[#f5c451]" aria-hidden="true">
-          ★
-        </span>
+        <Star
+          className="size-4 fill-popup-star text-popup-star-border"
+          aria-hidden="true"
+        />
         Star on GitHub
+        <ArrowUpRight className="size-3.5 text-popup-icon" aria-hidden="true" />
       </a>
     </main>
   );

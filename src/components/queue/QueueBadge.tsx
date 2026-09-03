@@ -9,7 +9,7 @@ export function QueueBadge({
   paused = false,
   sending,
 }: QueueBadgeProps) {
-  const status = paused ? ", paused" : sending ? ", sending now" : "";
+  const status = paused ? " (paused)" : sending ? " (sending now)" : "";
   const label = `${count} queued${status}`;
 
   return (

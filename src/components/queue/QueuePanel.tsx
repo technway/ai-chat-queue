@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Pause, Play } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { QueueService } from "../../queue/queue.service";
 import type {
   QueueItem as QueueItemData,
@@ -11,7 +11,7 @@ import { QueueIconButton } from "./QueueIconButton";
 import { QueueItem } from "./QueueItem";
 
 const iconProps = {
-  className: "size-[15px] shrink-0",
+  className: "size-3.75 shrink-0",
   "aria-hidden": true,
   strokeWidth: 1.8,
 } as const;
@@ -24,6 +24,7 @@ export interface QueuePanelProps {
   readonly onCollapsedChange?: (collapsed: boolean) => void;
   readonly onPausedChange?: (paused: boolean) => void;
   readonly onEditingChange?: (id: string | null) => void;
+  readonly exitingItem?: QueueItemData;
 }
 
 function isVisibleItem(item: QueueItemData): boolean {
@@ -38,11 +39,45 @@ export function QueuePanel({
   onCollapsedChange,
   onPausedChange,
   onEditingChange,
+  exitingItem,
 }: QueuePanelProps) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [exitingItems, setExitingItems] = useState<QueueItemData[]>([]);
 
-  const items = state.items.filter(isVisibleItem);
+  useEffect(() => {
+    if (!exitingItem) {
+      return;
+    }
+
+    setExitingItems((current) =>
+      current.some((item) => item.id === exitingItem.id)
+        ? current
+        : [...current, exitingItem],
+    );
+
+    window.setTimeout(() => {
+      setExitingItems((current) =>
+        current.filter((item) => item.id !== exitingItem.id),
+      );
+    }, 240);
+  }, [exitingItem]);
+
+  const queuedItems = state.items.filter(isVisibleItem);
+  const exitingIds = new Set(exitingItems.map((item) => item.id));
+
+  if (exitingItem) {
+    exitingIds.add(exitingItem.id);
+  }
+
+  const items = [
+    ...queuedItems,
+    ...[...exitingItems, ...(exitingItem ? [exitingItem] : [])].filter(
+      (item, index, allItems) =>
+        !queuedItems.some((queuedItem) => queuedItem.id === item.id) &&
+        allItems.findIndex((candidate) => candidate.id === item.id) === index,
+    ),
+  ];
 
   if (items.length === 0) {
     return null;
@@ -53,7 +88,7 @@ export function QueuePanel({
 
   return (
     <section
-      className="group mx-auto mb-1.5 w-full max-w-3xl overflow-visible rounded-[14px] border border-queue-border bg-queue-surface font-sans text-[13px] leading-[1.4] text-queue-text shadow-queue data-[collapsed]:rounded-xl"
+      className="group mx-auto mb-2 w-full max-w-3xl overflow-visible rounded-2xl border border-queue-border bg-queue-surface font-sans text-[13px] leading-[1.4] text-queue-text shadow-queue transition-shadow duration-200 data-[collapsed]:rounded-xl"
       data-testid="queue-panel"
       data-collapsed={collapsed ? "true" : undefined}
       aria-labelledby="queue-panel-title"
@@ -62,7 +97,7 @@ export function QueuePanel({
         Message queue
       </h2>
 
-      <div className="flex min-h-8 items-center justify-between border-b border-queue-border px-2.5 py-0.5 group-data-[collapsed]:border-b-0">
+      <div className="flex min-h-10 items-center justify-between border-b border-queue-border px-3 py-1 group-data-[collapsed]:border-b-0">
         <QueueBadge count={items.length} paused={paused} sending={isSending} />
         <div className="flex items-center">
           <QueueIconButton
@@ -141,6 +176,7 @@ export function QueuePanel({
             }
             canDrag={item.status !== "sending" && editingId === null}
             isEditing={editingId === item.id}
+            isExiting={exitingIds.has(item.id)}
             onMove={(id, direction) => queue.move(id, direction)}
             onDropItem={(id, targetId) => queue.moveBefore(id, targetId)}
             onEditStart={(id) => {

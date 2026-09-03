@@ -9,11 +9,11 @@ interface QueueButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const buttonBaseClass =
-  "rounded-lg bg-transparent text-[11px] font-semibold focus-visible:outline-2 focus-visible:outline-queue-accent focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-[.38]";
+  "cursor-pointer rounded-lg bg-transparent text-[11px] font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-queue-accent focus-visible:outline-offset-1 disabled:cursor-not-allowed disabled:opacity-40";
 
 const buttonSizeClass: Record<QueueButtonSize, string> = {
-  toolbar: "min-h-[26px] px-2",
-  editor: "min-h-[25px] px-2",
+  toolbar: "min-h-6.5 px-2",
+  editor: "min-h-6.25 px-2",
 };
 
 const buttonVariantClass: Record<QueueButtonVariant, string> = {

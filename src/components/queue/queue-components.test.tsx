@@ -93,7 +93,7 @@ describe("queue components", () => {
     queue.claimNextPending();
     const panel = renderToStaticMarkup(<QueuePanel queue={queue} />);
 
-    expect(badge).toContain("2 queued, sending now");
+    expect(badge).toContain("2 queued (sending now)");
     expect(row).toContain("Sending");
     expect(row).toContain("disabled");
     expect(panel).toContain("Clear all");
@@ -120,7 +120,21 @@ describe("queue components", () => {
 
     const html = renderToStaticMarkup(<QueuePanel queue={queue} paused />);
 
-    expect(html).toContain("1 queued, paused");
+    expect(html).toContain("1 queued (paused)");
     expect(html).toContain('aria-label="Resume queue"');
+  });
+
+  it("renders an exiting item for the release animation", () => {
+    const queue = new QueueService();
+    const item = queue.enqueue("Release this message");
+    queue.markSent(item.id);
+
+    const html = renderToStaticMarkup(
+      <QueuePanel queue={queue} state={queue.getState()} exitingItem={item} />,
+    );
+
+    expect(html).toContain('data-exiting="true"');
+    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain("animate-queue-item-out");
   });
 });

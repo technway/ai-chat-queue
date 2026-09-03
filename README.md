@@ -1,8 +1,7 @@
 <div align="center">
   <img src="./src/assets/logo.png" alt="ChatGPT Message Queue logo" width="100" />
   <h1>ChatGPT Message Queue</h1>
-  <p><strong>Press Enter. Keep the conversation moving.</strong></p>
-  <p>Keep writing while ChatGPT is generating. Messages wait in a local FIFO queue and send automatically when ChatGPT is ready.</p>
+  <p><strong>Queue the next steps while ChatGPT is still working.</strong> Keep writing while ChatGPT is generating. Messages wait in a local FIFO queue and send automatically when ChatGPT is ready.</p>
   <p>
     <a href="https://github.com/technway/chatgpt-message-queue/actions/workflows/validation.yml"><img src="https://img.shields.io/github/actions/workflow/status/technway/chatgpt-message-queue/validation.yml?branch=main&label=CI&logo=github" alt="CI status" /></a>
     <a href="https://github.com/technway/chatgpt-message-queue/stargazers"><img src="https://img.shields.io/github/stars/technway/chatgpt-message-queue?label=Stars&logo=github" alt="GitHub stars" /></a>

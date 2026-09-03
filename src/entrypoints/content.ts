@@ -9,6 +9,7 @@ import "../styles/tailwind.css";
 import { ChatGptSendIntegration } from "../integrations/chatgpt/send-integration";
 import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
+import type { QueueItem as QueueItemData } from "../queue/queue.types";
 import { QueueDrainer } from "../queue/queue-drainer";
 import {
   createQueueStorageForScope,
@@ -51,8 +52,29 @@ async function waitForPageHydration(): Promise<void> {
   await waitForAnimationFrame();
 }
 
+type QueueTheme = "light" | "dark";
+
+function getQueueTheme(): QueueTheme | undefined {
+  const root = document.documentElement;
+  const dataTheme = root.dataset.theme;
+
+  if (dataTheme === "light" || dataTheme === "dark") {
+    return dataTheme;
+  }
+
+  if (root.classList.contains("light")) {
+    return "light";
+  }
+
+  if (root.classList.contains("dark")) {
+    return "dark";
+  }
+
+  return undefined;
+}
+
 function syncQueueTheme(shadowHost: HTMLElement): void {
-  const theme = document.documentElement.dataset.theme;
+  const theme = getQueueTheme();
 
   if (theme === "light" || theme === "dark") {
     shadowHost.dataset.theme = theme;
@@ -264,11 +286,15 @@ export default defineContentScript({
         });
 
         const root = createRoot(container);
-        const renderQueue = (state = queue.getState()) => {
+        const renderQueue = (
+          state = queue.getState(),
+          exitingItem?: QueueItemData,
+        ) => {
           root.render(
             createElement(QueuePanel, {
               queue,
               state,
+              exitingItem,
               initialCollapsed: preferences.collapsed,
               paused: settings.paused,
               onCollapsedChange(collapsed) {
@@ -314,7 +340,10 @@ export default defineContentScript({
 
         // Subscribe here so queue updates are not dependent on React effect timing.
         const stopRendering = queue.subscribe((event) => {
-          renderQueue(event.state);
+          const shouldAnimateExit =
+            event.type === "removed" ||
+            (event.type === "status-changed" && event.item.status === "sent");
+          renderQueue(event.state, shouldAnimateExit ? event.item : undefined);
         });
         refreshQueueUi = renderQueue;
         renderQueue();
@@ -362,7 +391,7 @@ export default defineContentScript({
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,
-      attributeFilter: ["data-theme"],
+      attributeFilter: ["class", "data-theme"],
     });
     ensureQueueUi();
 
