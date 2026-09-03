@@ -28,7 +28,9 @@ describe("queue components", () => {
     expect(html).toContain("2 queued");
     expect(html).toContain("First queued message");
     expect(html).toContain("Second queued message");
+    expect(html).toContain("Clear all");
     expect(html).toContain('aria-label="Clear queued messages"');
+    expect(html).not.toContain('aria-label="Queue actions"');
     expect(html).toContain('aria-label="Remove queued message 1"');
     expect(html).toContain('aria-label="Minimize queue"');
     expect(html).toContain('aria-expanded="true"');
@@ -69,6 +71,7 @@ describe("queue components", () => {
     expect(badge).toContain("2 queued, sending now");
     expect(row).toContain("Sending");
     expect(row).toContain("disabled");
+    expect(panel).toContain("Clear all");
     expect(panel).toContain('disabled="" aria-label="Clear queued messages"');
   });
 

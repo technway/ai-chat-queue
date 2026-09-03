@@ -5,7 +5,7 @@ import type {
   QueueState,
 } from "../../queue/queue.types";
 import { QueueBadge } from "./QueueBadge";
-import { ChevronIcon, MoreIcon, QueueControlIcon } from "./QueueIcons";
+import { ChevronIcon, QueueControlIcon } from "./QueueIcons";
 import { QueueItem } from "./QueueItem";
 
 export interface QueuePanelProps {
@@ -63,25 +63,16 @@ export function QueuePanel({
             <QueueControlIcon paused={paused} />
           </button>
 
-          <details className="queue-actions">
-            <summary
-              className="queue-icon-button"
-              aria-label="Queue actions"
-              title="Queue actions"
-            >
-              <MoreIcon />
-            </summary>
-            <div className="queue-actions-menu">
-              <button
-                type="button"
-                disabled={!hasRemovableItems}
-                aria-label="Clear queued messages"
-                onClick={() => queue.clear()}
-              >
-                Clear queue
-              </button>
-            </div>
-          </details>
+          <button
+            className="queue-clear-button"
+            type="button"
+            disabled={!hasRemovableItems}
+            aria-label="Clear queued messages"
+            title="Clear all queued messages"
+            onClick={() => queue.clear()}
+          >
+            Clear all
+          </button>
 
           <button
             className="queue-icon-button"

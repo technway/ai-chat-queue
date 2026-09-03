@@ -53,21 +53,6 @@ export function ChevronIcon({ collapsed }: { readonly collapsed: boolean }) {
   );
 }
 
-export function MoreIcon() {
-  return (
-    <svg
-      className="queue-icon"
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <circle cx="5" cy="12" r="1.5" />
-      <circle cx="12" cy="12" r="1.5" />
-      <circle cx="19" cy="12" r="1.5" />
-    </svg>
-  );
-}
-
 export function QueueControlIcon({ paused }: { readonly paused: boolean }) {
   return (
     <svg
