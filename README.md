@@ -1,10 +1,19 @@
 <div align="center">
-  <img src="./src/assets/logo.png" alt="ChatGPT Message Queue logo" width="128" />
+  <img src="./src/assets/logo.png" alt="ChatGPT Message Queue logo" width="100" />
   <h1>ChatGPT Message Queue</h1>
   <p>Keep writing while ChatGPT is generating. Messages wait in a local FIFO queue and send automatically when ChatGPT is ready.</p>
+  <p>
+    <a href="https://github.com/technway/chatgpt-message-queue/actions/workflows/validation.yml"><img src="https://img.shields.io/github/actions/workflow/status/technway/chatgpt-message-queue/validation.yml?branch=main&label=CI&logo=github" alt="CI status" /></a>
+    <a href="https://github.com/technway/chatgpt-message-queue/stargazers"><img src="https://img.shields.io/github/stars/technway/chatgpt-message-queue?label=Stars&logo=github" alt="GitHub stars" /></a>
+    <img src="https://img.shields.io/github/package-json/v/technway/chatgpt-message-queue?label=Version" alt="Version" />
+    <img src="https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white" alt="Chrome extension" />
+    <img src="https://img.shields.io/badge/Manifest-V3-4285F4?logo=googlechrome&logoColor=white" alt="Manifest V3" />
+  </p>
 </div>
 
-![Queue panel shown on the local fake ChatGPT test page](./docs/queue-screenshot.png)
+![ChatGPT Message Queue with three queued messages](./docs/store-screenshot.png)
+
+⭐ Find this useful? Star the repo to help more ChatGPT users discover the queue :)
 
 ## What it solves
 
@@ -19,30 +28,26 @@ ChatGPT normally accepts one message while a response is generating. This extens
 
 The extension does not send messages to its own service: it operates on the ChatGPT page already open in the browser.
 
-## Architecture
+```mermaid
+flowchart TD
+    DOM["ChatGPT DOM"] --> Content["Content script<br/>src/entrypoints/content.ts"]
 
-```text
-ChatGPT DOM
-    │
-    ▼
-Content script (`src/entrypoints/content.ts`)
-    ├── ChatGptAdapter        reads generation state
-    ├── ChatGptComposerAdapter reads and submits composer text
-    └── ChatGptSendIntegration intercepts busy-state sends
-                    │
-                    ▼
-              QueueService → QueueDrainer
-                    │              │
-                    ▼              ▼
-              QueuePanel      ChatGPT composer
-          (isolated shadow UI)
-                    │
-                    ▼
-              QueueStorage
-       (`chrome.storage.local`)
+    Content --> Adapter["ChatGptAdapter<br/>reads generation state"]
+    Content --> ComposerAdapter["ChatGptComposerAdapter<br/>reads and submits composer text"]
+    Content --> SendIntegration["ChatGptSendIntegration<br/>intercepts busy-state sends"]
+
+    SendIntegration --> QueueService["QueueService"]
+    QueueService --> QueueDrainer["QueueDrainer"]
+    QueueService --> QueuePanel["QueuePanel<br/>(isolated shadow UI)"]
+    QueueService --> QueueStorage["QueueStorage<br/>chrome.storage.local"]
+    QueueDrainer --> Composer["ChatGPT composer"]
 ```
 
 The ChatGPT adapter is the only layer that knows ChatGPT's DOM selectors. Queue behavior is covered independently by unit tests and end-to-end tests against a local fake page.
+
+## Demo
+
+![ChatGPT Message Queue in use on ChatGPT](./docs/usage.gif)
 
 ## Installation
 
@@ -113,14 +118,6 @@ See the full statement in [PRIVACY.md](./PRIVACY.md).
 ## Contributing
 
 Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The short version is: open or find an issue, keep ChatGPT DOM knowledge inside the adapter, add tests for behavior changes, and run the local quality checks before submitting.
-
-## Roadmap
-
-- Publish the first Chrome Web Store release.
-- Keep ChatGPT selector fallbacks current as the composer UI changes.
-- Validate the extension packaging and behavior across supported Chromium and Firefox builds.
-- Improve queue failure recovery and user-facing retry controls.
-- Add more configurable queue behavior while preserving local-only operation.
 
 ## Release
 
