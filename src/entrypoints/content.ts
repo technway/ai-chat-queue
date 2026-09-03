@@ -25,6 +25,32 @@ function appendQueueHost(anchor: Element, shadowHost: Element): void {
   }
 }
 
+function waitForAnimationFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame === "function") {
+      requestAnimationFrame(() => resolve());
+      return;
+    }
+
+    setTimeout(resolve, 0);
+  });
+}
+
+async function waitForPageHydration(): Promise<void> {
+  if (document.readyState === "loading") {
+    await new Promise<void>((resolve) => {
+      document.addEventListener("DOMContentLoaded", () => resolve(), {
+        once: true,
+      });
+    });
+  }
+
+  // Let the page's React tree finish its initial hydration before inserting
+  // the extension host into the composer layout.
+  await waitForAnimationFrame();
+  await waitForAnimationFrame();
+}
+
 function getCurrentQueueScope(): string {
   const matches = (selectors: readonly string[]) =>
     document.querySelector(selectors.join(",")) !== null;
@@ -204,6 +230,8 @@ export default defineContentScript({
         void drainer.drainNext();
       }
     });
+
+    await waitForPageHydration();
 
     const ui = await createShadowRootUi(ctx, {
       name: "chatgpt-message-queue",

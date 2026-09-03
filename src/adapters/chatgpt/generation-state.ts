@@ -89,9 +89,14 @@ export function detectGenerationState(
 
   const sendButton = queryFirstVisible(root, CHATGPT_SELECTORS.sendButton);
 
-  if (!sendButton) {
-    return "unknown";
+  if (sendButton) {
+    return isDisabled(sendButton) ? "unavailable" : "available";
   }
 
-  return isDisabled(sendButton) ? "unavailable" : "available";
+  // Signed-in ChatGPT removes the send button while the composer is empty.
+  // A visible composer still gives the queue a safe place to stage text; the
+  // composer adapter will retry the send once ChatGPT renders the button.
+  return queryFirstVisible(root, CHATGPT_SELECTORS.composer)
+    ? "unavailable"
+    : "unknown";
 }

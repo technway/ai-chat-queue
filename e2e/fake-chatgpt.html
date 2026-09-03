@@ -28,15 +28,16 @@
       <ol id="sent-messages" aria-label="Sent messages"></ol>
 
       <form id="composer-container" data-testid="composer">
-        <textarea
+        <div
           id="prompt-textarea"
           data-testid="prompt-textarea"
-          aria-label="Message"
-        ></textarea>
+          contenteditable="true"
+        ></div>
         <button
           id="send-button"
           data-testid="send-button"
           type="button"
+          hidden
         >
           Send
         </button>
@@ -63,16 +64,26 @@
       let state = "available";
       let finishTimer;
 
+      function hasComposerContent() {
+        return composer.innerText.trim().length > 0;
+      }
+
+      function updateComposerControls() {
+        const hasContent = hasComposerContent();
+        sendButton.hidden = !hasContent;
+        sendButton.disabled = state !== "available" || !hasContent;
+      }
+
       function setState(nextState, autoFinish = false) {
         state = nextState;
         const generating = state === "generating";
 
         stateLabel.textContent = state;
-        sendButton.disabled = generating;
         stopButton.hidden = !generating;
         startButton.disabled = generating;
         finishButton.disabled = !generating;
         document.body.dataset.generationState = state;
+        updateComposerControls();
 
         if (finishTimer) {
           clearTimeout(finishTimer);
@@ -93,7 +104,7 @@
           return;
         }
 
-        const content = composer.value.trim();
+        const content = composer.innerText.trim();
 
         if (!content) {
           return;
@@ -102,7 +113,7 @@
         const message = document.createElement("li");
         message.textContent = content;
         sentMessages.append(message);
-        composer.value = "";
+        composer.textContent = "";
         composer.dispatchEvent(new Event("input", { bubbles: true }));
         setState("generating", true);
       }
@@ -117,6 +128,7 @@
           sendMessage();
         }
       });
+      composer.addEventListener("input", updateComposerControls);
 
       setState("available");
     </script>

@@ -138,6 +138,14 @@ describe("detectGenerationState", () => {
     expect(detectGenerationState(root)).toBe("unknown");
   });
 
+  it("treats a visible composer without a send button as unavailable", () => {
+    const root = createRoot({
+      [CHATGPT_SELECTORS.composer[0]]: createElement(),
+    });
+
+    expect(detectGenerationState(root)).toBe("unavailable");
+  });
+
   it("returns unknown when controls are missing", () => {
     expect(detectGenerationState(createRoot())).toBe("unknown");
     expect(detectGenerationState(null)).toBe("unknown");
