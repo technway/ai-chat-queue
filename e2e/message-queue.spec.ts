@@ -1,11 +1,11 @@
 import { expect, openFakeChatGpt, test } from "./fixtures";
 
 function queuePanel(page: Parameters<typeof openFakeChatGpt>[0]) {
-  return page.locator("section.queue-panel");
+  return page.getByTestId("queue-panel");
 }
 
 function queueItems(page: Parameters<typeof openFakeChatGpt>[0]) {
-  return queuePanel(page).locator(".queue-item");
+  return queuePanel(page).getByTestId("queue-item");
 }
 
 async function startGenerating(page: Parameters<typeof openFakeChatGpt>[0]) {
@@ -85,7 +85,7 @@ test("reorders queued messages before sending", async ({ page }) => {
 
   await page.getByRole("button", { name: "Move queued message 3 up" }).click();
 
-  await expect(queueItems(page).locator(".queue-item-preview")).toHaveText([
+  await expect(queueItems(page).getByTestId("queue-item-preview")).toHaveText([
     "First queued",
     "Third queued",
     "Second queued",
@@ -113,7 +113,7 @@ test("reorders queued messages with drag and drop", async ({ page }) => {
     .getByRole("button", { name: "Drag queued message 3 to reorder" })
     .dragTo(queueItems(page).filter({ hasText: "First queued" }));
 
-  await expect(queueItems(page).locator(".queue-item-preview")).toHaveText([
+  await expect(queueItems(page).getByTestId("queue-item-preview")).toHaveText([
     "Third queued",
     "First queued",
     "Second queued",

@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronUp, Pause, Play } from "lucide-react";
 import { useState } from "react";
 import type { QueueService } from "../../queue/queue.service";
 import type {
@@ -5,8 +6,15 @@ import type {
   QueueState,
 } from "../../queue/queue.types";
 import { QueueBadge } from "./QueueBadge";
-import { ChevronIcon, QueueControlIcon } from "./QueueIcons";
+import { QueueButton } from "./QueueButton";
+import { QueueIconButton } from "./QueueIconButton";
 import { QueueItem } from "./QueueItem";
+
+const iconProps = {
+  className: "size-[15px] shrink-0",
+  "aria-hidden": true,
+  strokeWidth: 1.8,
+} as const;
 
 export interface QueuePanelProps {
   readonly queue: QueueService;
@@ -45,29 +53,28 @@ export function QueuePanel({
 
   return (
     <section
-      className="queue-panel"
-      data-collapsed={collapsed || undefined}
+      className="group mx-auto mb-1.5 w-full max-w-3xl overflow-visible rounded-[14px] border border-queue-border bg-queue-surface font-sans text-[13px] leading-[1.4] text-queue-text shadow-queue data-[collapsed]:rounded-xl"
+      data-testid="queue-panel"
+      data-collapsed={collapsed ? "true" : undefined}
       aria-labelledby="queue-panel-title"
     >
-      <h2 id="queue-panel-title" className="queue-visually-hidden">
+      <h2 id="queue-panel-title" className="sr-only">
         Message queue
       </h2>
 
-      <div className="queue-toolbar">
+      <div className="flex min-h-8 items-center justify-between border-b border-queue-border px-2.5 py-0.5 group-data-[collapsed]:border-b-0">
         <QueueBadge count={items.length} paused={paused} sending={isSending} />
-        <div className="queue-toolbar-actions">
-          <button
-            className="queue-icon-button"
+        <div className="flex items-center">
+          <QueueIconButton
             type="button"
             aria-label={paused ? "Resume queue" : "Pause queue"}
             title={paused ? "Resume queue" : "Pause queue"}
             onClick={() => onPausedChange?.(!paused)}
           >
-            <QueueControlIcon paused={paused} />
-          </button>
+            {paused ? <Play {...iconProps} /> : <Pause {...iconProps} />}
+          </QueueIconButton>
 
-          <button
-            className="queue-clear-button"
+          <QueueButton
             type="button"
             disabled={!hasRemovableItems}
             aria-label="Clear queued messages"
@@ -75,10 +82,9 @@ export function QueuePanel({
             onClick={() => queue.clear()}
           >
             Clear all
-          </button>
+          </QueueButton>
 
-          <button
-            className="queue-icon-button"
+          <QueueIconButton
             type="button"
             aria-expanded={!collapsed}
             aria-controls="queue-message-list"
@@ -92,19 +98,23 @@ export function QueuePanel({
               })
             }
           >
-            <ChevronIcon collapsed={collapsed} />
-          </button>
+            {collapsed ? (
+              <ChevronUp {...iconProps} />
+            ) : (
+              <ChevronDown {...iconProps} />
+            )}
+          </QueueIconButton>
         </div>
       </div>
 
-      <p id="queue-list-instructions" className="queue-visually-hidden">
+      <p id="queue-list-instructions" className="sr-only">
         Messages are sent from top to bottom. Use the move buttons to reorder a
         message, or drag it onto another message.
       </p>
 
       <ol
         id="queue-message-list"
-        className="queue-list"
+        className="m-0 max-h-[min(136px,calc(28vh-34px))] list-none overflow-y-auto px-1.5 max-[560px]:max-h-[calc(24vh-34px)]"
         aria-label="Queued messages"
         aria-describedby="queue-list-instructions"
         hidden={collapsed}

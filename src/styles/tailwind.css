@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@source "../";
+
+@theme inline {
+  --color-queue-surface: var(--queue-surface);
+  --color-queue-surface-muted: var(--queue-surface-muted);
+  --color-queue-text: var(--queue-text);
+  --color-queue-text-muted: var(--queue-text-muted);
+  --color-queue-border: var(--queue-border);
+  --color-queue-accent: var(--queue-accent);
+  --color-queue-danger: #d33a2c;
+  --shadow-queue: var(--queue-shadow);
+}
+
+@layer base {
+  :host {
+    --queue-surface: var(--main-surface-primary, Canvas);
+    --queue-surface-muted: var(
+      --main-surface-secondary,
+      color-mix(in srgb, Canvas 92%, CanvasText 8%)
+    );
+    --queue-text: var(--text-primary, CanvasText);
+    --queue-text-muted: var(
+      --text-secondary,
+      color-mix(in srgb, CanvasText 58%, transparent)
+    );
+    --queue-border: var(
+      --border-light,
+      color-mix(in srgb, CanvasText 16%, transparent)
+    );
+    --queue-accent: var(--link, #10a37f);
+    --queue-shadow:
+      0 2px 4px color-mix(in srgb, #000 10%, transparent),
+      0 8px 20px color-mix(in srgb, #000 14%, transparent),
+      0 20px 40px color-mix(in srgb, #000 9%, transparent);
+    display: block;
+    width: 100%;
+    color-scheme: light dark;
+  }
+
+  :host[data-theme="light"] {
+    --queue-surface: #fff;
+    --queue-surface-muted: #f4f4f4;
+    --queue-text: #2f2f2f;
+    --queue-text-muted: #6b6b6b;
+    --queue-border: rgb(0 0 0 / 12%);
+    --queue-accent: #10a37f;
+    --queue-shadow:
+      0 2px 4px rgb(0 0 0 / 8%), 0 8px 20px rgb(0 0 0 / 10%),
+      0 20px 40px rgb(0 0 0 / 7%);
+    color-scheme: light;
+  }
+
+  :host[data-theme="dark"] {
+    --queue-surface: #2f2f2f;
+    --queue-surface-muted: #424242;
+    --queue-text: #f5f5f5;
+    --queue-text-muted: #b4b4b4;
+    --queue-border: rgb(255 255 255 / 14%);
+    --queue-accent: #19c37d;
+    --queue-shadow:
+      0 2px 4px rgb(0 0 0 / 24%), 0 8px 20px rgb(0 0 0 / 30%),
+      0 20px 40px rgb(0 0 0 / 22%);
+    color-scheme: dark;
+  }
+}

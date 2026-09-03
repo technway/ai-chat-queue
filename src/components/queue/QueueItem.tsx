@@ -1,12 +1,15 @@
+import { ArrowDown, ArrowUp, GripVertical, Pencil, Trash2 } from "lucide-react";
 import { type DragEvent, useState } from "react";
 import type { QueueItem as QueueItemData } from "../../queue/queue.types";
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  GripIcon,
-  PencilIcon,
-  TrashIcon,
-} from "./QueueIcons";
+import { QueueButton } from "./QueueButton";
+import { QueueIconButton } from "./QueueIconButton";
+import { QueueStatus } from "./QueueStatus";
+
+const iconProps = {
+  className: "size-[15px] shrink-0",
+  "aria-hidden": true,
+  strokeWidth: 1.8,
+} as const;
 
 const STATUS_LABELS = {
   pending: "Queued",
@@ -127,7 +130,8 @@ export function QueueItem({
 
   return (
     <li
-      className="queue-item"
+      className="group/item grid min-h-[34px] grid-cols-[18px_minmax(0,1fr)_auto_auto] items-center gap-1.5 border-transparent py-0.5 not-first:border-t not-first:border-queue-border data-[dragging]:opacity-[.45] data-[drag-over]:rounded-lg data-[drag-over]:bg-queue-surface-muted max-[560px]:grid-cols-[18px_minmax(0,1fr)_auto]"
+      data-testid="queue-item"
       data-editing={isEditing || undefined}
       data-dragging={isDragging || undefined}
       data-drag-over={isDragOver || undefined}
@@ -140,8 +144,9 @@ export function QueueItem({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      <button
-        className="queue-item-grip"
+      <QueueIconButton
+        className="active:cursor-grabbing"
+        size="compact"
         type="button"
         draggable={canDrag && !isEditing}
         disabled={!canDrag || isEditing}
@@ -150,12 +155,12 @@ export function QueueItem({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <GripIcon />
-      </button>
+        <GripVertical {...iconProps} />
+      </QueueIconButton>
       {isEditing ? (
-        <div className="queue-item-editor">
+        <div className="[grid-column:2_/-1] grid gap-1.5 py-1">
           <textarea
-            className="queue-item-editor-input"
+            className="min-h-[58px] w-full resize-y rounded-lg border border-queue-border bg-queue-surface-muted px-2 py-1.5 font-[inherit] leading-[1.35] text-queue-text focus-visible:outline-2 focus-visible:outline-queue-accent focus-visible:outline-offset-1"
             aria-label={`Edit queued message ${position}`}
             aria-describedby={error ? editorErrorId : itemHelpId}
             aria-invalid={error ? true : undefined}
@@ -166,84 +171,85 @@ export function QueueItem({
           {error ? (
             <p
               id={editorErrorId}
-              className="queue-item-editor-error"
+              className="m-0 text-[11px] text-queue-danger"
               role="alert"
             >
               {error}
             </p>
           ) : null}
-          <div className="queue-item-editor-actions">
-            <button
-              className="queue-editor-button"
+          <div className="flex justify-end gap-1.5">
+            <QueueButton
+              size="editor"
               type="button"
               title="Cancel editing"
               aria-label="Cancel editing queued message"
               onClick={cancelEditing}
             >
               Cancel
-            </button>
-            <button
-              className="queue-editor-button queue-editor-button-primary"
+            </QueueButton>
+            <QueueButton
+              size="editor"
+              variant="primary"
               type="button"
               title="Save edited message"
               aria-label="Save edited queued message"
               onClick={saveEdit}
             >
               Save
-            </button>
+            </QueueButton>
           </div>
         </div>
       ) : (
         <>
-          <p className="queue-item-preview" title={item.content}>
+          <p
+            className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[13px]"
+            data-testid="queue-item-preview"
+            title={item.content}
+          >
             {item.content}
           </p>
-          <span className="queue-item-status">{statusLabel}</span>
-          <div className="queue-item-actions">
-            <button
-              className="queue-icon-button"
+          <QueueStatus status={item.status} label={statusLabel} />
+          <div className="flex items-center gap-px">
+            <QueueIconButton
               type="button"
               disabled={!canMoveUp}
               aria-label={`Move queued message ${position} up`}
               title="Move up"
               onClick={() => onMove(item.id, "up")}
             >
-              <ArrowUpIcon />
-            </button>
-            <button
-              className="queue-icon-button"
+              <ArrowUp {...iconProps} />
+            </QueueIconButton>
+            <QueueIconButton
               type="button"
               disabled={!canMoveDown}
               aria-label={`Move queued message ${position} down`}
               title="Move down"
               onClick={() => onMove(item.id, "down")}
             >
-              <ArrowDownIcon />
-            </button>
-            <button
-              className="queue-icon-button"
+              <ArrowDown {...iconProps} />
+            </QueueIconButton>
+            <QueueIconButton
               type="button"
               disabled={!canEdit}
               aria-label={`Edit queued message ${position}`}
               title="Edit message"
               onClick={startEditing}
             >
-              <PencilIcon />
-            </button>
-            <button
-              className="queue-icon-button"
+              <Pencil {...iconProps} />
+            </QueueIconButton>
+            <QueueIconButton
               type="button"
               disabled={isSending}
               aria-label={`Remove queued message ${position}`}
               title="Remove message"
               onClick={() => onRemove(item.id)}
             >
-              <TrashIcon />
-            </button>
+              <Trash2 {...iconProps} />
+            </QueueIconButton>
           </div>
         </>
       )}
-      <span id={itemHelpId} className="queue-visually-hidden">
+      <span id={itemHelpId} className="sr-only">
         {canDrag
           ? "Drag this message to reorder it. Keyboard users can use the move up and move down buttons."
           : "Use the move up and move down buttons to reorder this message."}

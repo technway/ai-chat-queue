@@ -27,9 +27,11 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.11",
     "@playwright/test": "^1.62.1",
+    "@tailwindcss/vite": "^4.3.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "vitest": "^4.1.11",
     "web-ext": "^10.5.0",

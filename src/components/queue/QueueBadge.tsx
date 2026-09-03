@@ -13,7 +13,10 @@ export function QueueBadge({
   const label = `${count} queued${status}`;
 
   return (
-    <span className="queue-badge" aria-live="polite">
+    <span
+      className="text-[11px] font-medium text-queue-text-muted"
+      aria-live="polite"
+    >
       {label}
     </span>
   );

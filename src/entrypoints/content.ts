@@ -5,7 +5,7 @@ import { ChatGptAdapter } from "../adapters/chatgpt/adapter";
 import { ChatGptComposerAdapter } from "../adapters/chatgpt/composer";
 import { CHATGPT_SELECTORS } from "../adapters/chatgpt/selectors";
 import { QueuePanel } from "../components/queue/QueuePanel";
-import "../components/queue/queue.css";
+import "../styles/tailwind.css";
 import { ChatGptSendIntegration } from "../integrations/chatgpt/send-integration";
 import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
