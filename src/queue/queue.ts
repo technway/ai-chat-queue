@@ -141,6 +141,33 @@ export class MessageQueue {
     return updatedItem;
   }
 
+  updateContent(id: string, content: string): QueueItem | undefined {
+    if (typeof content !== "string" || content.trim().length === 0) {
+      throw new TypeError("Message content must be a non-empty string");
+    }
+
+    const index = this.items.findIndex((item) => item.id === id);
+
+    if (index === -1) {
+      return undefined;
+    }
+
+    const item = this.items[index];
+
+    if (!item) {
+      return undefined;
+    }
+
+    const updatedItem = createQueueItem(
+      item.id,
+      content,
+      item.createdAt,
+      item.status,
+    );
+    this.items[index] = updatedItem;
+    return updatedItem;
+  }
+
   getState(): QueueState {
     const counts: Record<QueueItemStatus, number> = {
       pending: 0,

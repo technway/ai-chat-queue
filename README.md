@@ -24,7 +24,9 @@ ChatGPT normally accepts one message while a response is generating. This extens
 1. A normal message is sent through ChatGPT unchanged.
 2. If ChatGPT is generating, its send button is unavailable, or unfinished queue work exists, the extension captures the message and adds it to the current conversation's FIFO queue.
 3. When ChatGPT becomes available, the queue drainer places the next message in the composer and submits it.
-4. Queue state and UI preferences are stored locally per conversation. After a reload, pending work is restored paused so it can be explicitly resumed.
+4. Pending messages can be moved up or down before they are sent.
+5. Queued messages can be edited in place; automatic sending pauses at the edited message while earlier messages continue.
+6. Queue state and UI preferences are stored locally per conversation. After a reload, pending work is restored paused so it can be explicitly resumed.
 
 The extension does not send messages to its own service: it operates on the ChatGPT page already open in the browser.
 

@@ -15,6 +15,7 @@ export interface QueuePanelProps {
   readonly paused?: boolean;
   readonly onCollapsedChange?: (collapsed: boolean) => void;
   readonly onPausedChange?: (paused: boolean) => void;
+  readonly onEditingChange?: (id: string | null) => void;
 }
 
 function isVisibleItem(item: QueueItemData): boolean {
@@ -28,8 +29,10 @@ export function QueuePanel({
   paused = false,
   onCollapsedChange,
   onPausedChange,
+  onEditingChange,
 }: QueuePanelProps) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const items = state.items.filter(isVisibleItem);
 
@@ -105,6 +108,31 @@ export function QueuePanel({
             key={item.id}
             item={item}
             position={index + 1}
+            canMoveUp={
+              item.status !== "sending" &&
+              index > 0 &&
+              items[index - 1]?.status !== "sending"
+            }
+            canMoveDown={
+              item.status !== "sending" &&
+              index < items.length - 1 &&
+              items[index + 1]?.status !== "sending"
+            }
+            canEdit={
+              item.status !== "sending" &&
+              (editingId === null || editingId === item.id)
+            }
+            isEditing={editingId === item.id}
+            onMove={(id, direction) => queue.move(id, direction)}
+            onEditStart={(id) => {
+              setEditingId(id);
+              onEditingChange?.(id);
+            }}
+            onEditCancel={() => {
+              setEditingId(null);
+              onEditingChange?.(null);
+            }}
+            onEdit={(id, content) => queue.edit(id, content) !== undefined}
             onRemove={(id) => queue.remove(id)}
           />
         ))}

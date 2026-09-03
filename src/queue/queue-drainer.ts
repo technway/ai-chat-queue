@@ -4,7 +4,7 @@ export type QueueSendResult = "sent" | "deferred" | "staged";
 
 type QueueDrainStore = Pick<
   QueueService,
-  "claimNextPending" | "markPending" | "markSent" | "markFailed"
+  "claimNextPending" | "getState" | "markPending" | "markSent" | "markFailed"
 >;
 
 export interface QueueMessageSender {
@@ -21,6 +21,7 @@ export class QueueDrainer {
   private halted = false;
   private inFlight = false;
   private paused = false;
+  private pausedAtId: string | null = null;
   private retryRequested = false;
   private stopped = false;
 
@@ -43,6 +44,26 @@ export class QueueDrainer {
     }
   }
 
+  pauseAt(id: string): boolean {
+    const item = this.options.queue
+      .getState()
+      .items.find((candidate) => candidate.id === id);
+
+    if (!item || item.status === "sent" || item.status === "sending") {
+      return false;
+    }
+
+    this.pausedAtId = id;
+    return true;
+  }
+
+  resumeAt(id?: string): void {
+    if (id === undefined || this.pausedAtId === id) {
+      this.pausedAtId = null;
+      this.armed = true;
+    }
+  }
+
   reset(paused = false): void {
     if (this.stopped) {
       return;
@@ -51,6 +72,7 @@ export class QueueDrainer {
     this.armed = true;
     this.halted = false;
     this.paused = paused;
+    this.pausedAtId = null;
     this.retryRequested = false;
   }
 
@@ -66,6 +88,10 @@ export class QueueDrainer {
     }
 
     if (this.halted || !this.armed) {
+      return;
+    }
+
+    if (this.isPausedAtItem()) {
       return;
     }
 
@@ -120,5 +146,29 @@ export class QueueDrainer {
 
   stop(): void {
     this.stopped = true;
+  }
+
+  private isPausedAtItem(): boolean {
+    if (!this.pausedAtId) {
+      return false;
+    }
+
+    const items = this.options.queue.getState().items;
+    const barrierIndex = items.findIndex((item) => item.id === this.pausedAtId);
+
+    if (
+      barrierIndex === -1 ||
+      items[barrierIndex]?.status === "sent" ||
+      items[barrierIndex]?.status === "sending"
+    ) {
+      this.pausedAtId = null;
+      return false;
+    }
+
+    const nextPendingIndex = items.findIndex(
+      (item) => item.status === "pending",
+    );
+
+    return nextPendingIndex === -1 || nextPendingIndex >= barrierIndex;
   }
 }

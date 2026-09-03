@@ -284,6 +284,19 @@ export default defineContentScript({
                   queueMicrotask(drainIfReady);
                 }
               },
+              onEditingChange(id) {
+                if (id) {
+                  if (!drainer.pauseAt(id)) {
+                    return;
+                  }
+                } else {
+                  drainer.resumeAt();
+                }
+
+                // Allow messages before the edit barrier to continue, while
+                // keeping the edited message and everything after it queued.
+                queueMicrotask(drainIfReady);
+              },
             }),
           );
         };

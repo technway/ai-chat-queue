@@ -218,6 +218,36 @@ describe("MessageQueue", () => {
     });
   });
 
+  it("updates message content without changing its position", () => {
+    const queue = createQueue();
+    const first = queue.add("First");
+    const second = queue.add("Second");
+    queue.updateStatus(second.id, "failed");
+
+    expect(queue.updateContent(second.id, "Edited second")).toEqual({
+      ...second,
+      content: "Edited second",
+      status: "failed",
+    });
+    expect(queue.getState().items).toEqual([
+      first,
+      { ...second, content: "Edited second", status: "failed" },
+    ]);
+  });
+
+  it.each(["", "   ", "\n\t"])(
+    "rejects empty updated content %j",
+    (content) => {
+      const queue = createQueue();
+      const item = queue.add("Original");
+
+      expect(() => queue.updateContent(item.id, content)).toThrow(
+        new TypeError("Message content must be a non-empty string"),
+      );
+      expect(queue.getState().items).toEqual([item]);
+    },
+  );
+
   it("returns state snapshots that do not change with the queue", () => {
     const queue = createQueue();
     queue.add("First");

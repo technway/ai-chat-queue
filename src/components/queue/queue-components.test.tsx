@@ -31,6 +31,9 @@ describe("queue components", () => {
     expect(html).toContain("Clear all");
     expect(html).toContain('aria-label="Clear queued messages"');
     expect(html).not.toContain('aria-label="Queue actions"');
+    expect(html).toContain('aria-label="Move queued message 1 down"');
+    expect(html).toContain('aria-label="Move queued message 2 up"');
+    expect(html).toContain('aria-label="Edit queued message 1"');
     expect(html).toContain('aria-label="Remove queued message 1"');
     expect(html).toContain('aria-label="Minimize queue"');
     expect(html).toContain('aria-expanded="true"');
@@ -61,7 +64,19 @@ describe("queue components", () => {
 
     const badge = renderToStaticMarkup(<QueueBadge count={2} sending />);
     const row = renderToStaticMarkup(
-      <QueueItem item={item} position={1} onRemove={vi.fn()} />,
+      <QueueItem
+        item={item}
+        position={1}
+        canMoveUp={false}
+        canMoveDown={false}
+        canEdit
+        isEditing={false}
+        onMove={vi.fn()}
+        onEditStart={vi.fn()}
+        onEditCancel={vi.fn()}
+        onEdit={vi.fn(() => true)}
+        onRemove={vi.fn()}
+      />,
     );
     const queue = new QueueService();
     queue.enqueue("Sending message");

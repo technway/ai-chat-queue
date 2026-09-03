@@ -36,6 +36,60 @@ export function TrashIcon() {
   );
 }
 
+export function PencilIcon() {
+  return (
+    <svg
+      className="queue-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m14 5 5 5" />
+      <path d="M5 19h4l10-10a2.12 2.12 0 0 0-3-3L6 16l-1 3Z" />
+    </svg>
+  );
+}
+
+export function ArrowUpIcon() {
+  return (
+    <svg
+      className="queue-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 11 6-6 6 6" />
+      <path d="M12 5v14" />
+    </svg>
+  );
+}
+
+export function ArrowDownIcon() {
+  return (
+    <svg
+      className="queue-icon"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m6 13 6 6 6-6" />
+      <path d="M12 19V5" />
+    </svg>
+  );
+}
+
 export function ChevronIcon({ collapsed }: { readonly collapsed: boolean }) {
   return (
     <svg

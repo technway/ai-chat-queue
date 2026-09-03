@@ -76,6 +76,60 @@ test("sends multiple queued messages in order", async ({ page }) => {
   await expect(queuePanel(page)).toHaveCount(0);
 });
 
+test("reorders queued messages before sending", async ({ page }) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await queueMessage(page, "First queued");
+  await queueMessage(page, "Second queued");
+  await queueMessage(page, "Third queued");
+
+  await page.getByRole("button", { name: "Move queued message 3 up" }).click();
+
+  await expect(queueItems(page).locator(".queue-item-preview")).toHaveText([
+    "First queued",
+    "Third queued",
+    "Second queued",
+  ]);
+
+  await page.getByTestId("fake-finish-generating").click();
+
+  await expect(page.locator("#sent-messages li")).toHaveText([
+    "First queued",
+    "Third queued",
+    "Second queued",
+  ]);
+  await expect(queuePanel(page)).toHaveCount(0);
+});
+
+test("edits a queued message and pauses at its position", async ({ page }) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await queueMessage(page, "First queued");
+  await queueMessage(page, "Second queued");
+  await queueMessage(page, "Third queued");
+
+  await page.getByRole("button", { name: "Edit queued message 2" }).click();
+  await page
+    .getByRole("textbox", { name: "Edit queued message 2" })
+    .fill("Second edited");
+
+  await page.getByTestId("fake-finish-generating").click();
+
+  await expect(page.locator("#sent-messages li")).toHaveText(["First queued"]);
+  await expect(
+    page.getByRole("textbox", { name: "Edit queued message 1" }),
+  ).toHaveValue("Second edited");
+
+  await page.getByRole("button", { name: "Save" }).click();
+
+  await expect(page.locator("#sent-messages li")).toHaveText([
+    "First queued",
+    "Second edited",
+    "Third queued",
+  ]);
+  await expect(queuePanel(page)).toHaveCount(0);
+});
+
 test("restores a queued message after refresh", async ({ page }) => {
   await openFakeChatGpt(page);
   await startGenerating(page);

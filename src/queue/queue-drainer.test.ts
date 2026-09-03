@@ -201,6 +201,35 @@ describe("QueueDrainer", () => {
     expect(queue.getState().counts.sent).toBe(1);
   });
 
+  it("drains messages before an edit barrier and waits at the edited item", async () => {
+    const queue = createQueue();
+    const first = queue.enqueue("First");
+    const edited = queue.enqueue("Edit this");
+    const last = queue.enqueue("Last");
+    const sender = { send: vi.fn(() => "sent" as const) };
+    const drainer = new QueueDrainer({ queue, sender });
+
+    expect(drainer.pauseAt(edited.id)).toBe(true);
+    await drainer.drainNext();
+
+    expect(sender.send).toHaveBeenCalledWith(first.content);
+    expect(queue.getState().items).toEqual([
+      { ...first, status: "sent" },
+      edited,
+      last,
+    ]);
+
+    drainer.markGenerating();
+    await drainer.drainNext();
+    expect(sender.send).toHaveBeenCalledTimes(1);
+
+    drainer.resumeAt(edited.id);
+    await drainer.drainNext();
+
+    expect(sender.send).toHaveBeenLastCalledWith(edited.content);
+    expect(queue.getState().items[1]?.status).toBe("sent");
+  });
+
   it("does nothing after cleanup", async () => {
     const queue = createQueue();
     queue.enqueue("Do not send");
