@@ -19,6 +19,34 @@
 
 ChatGPT normally accepts one message while a response is generating. This extension lets you submit follow-up messages without waiting. It displays the pending messages beside the composer and sends them one at a time as each response finishes.
 
+## Installation
+
+### From the Chrome Web Store
+
+The store listing will be linked here after the first public release.
+
+### From a local build
+
+You need Node.js and pnpm. Use the Node.js version in `.nvmrc` and pnpm 10.
+
+```bash
+git clone https://github.com/technway/chatgpt-message-queue.git
+cd chatgpt-message-queue
+pnpm install
+pnpm build
+```
+
+Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `.output/chrome-mv3`.
+
+## Usage
+
+1. Open ChatGPT and start a conversation.
+2. Press <kbd>Enter</kbd> while ChatGPT is generating.
+3. Your message waits in the queue, then sends automatically when ChatGPT is ready.
+
+> [!NOTE]
+> The queue currently supports text messages. Images and files are not queued yet.
+
 ## How queueing works
 
 1. A normal message is sent through ChatGPT unchanged.
@@ -51,25 +79,6 @@ The ChatGPT adapter is the only layer that knows ChatGPT's DOM selectors. Queue 
 
 ![ChatGPT Message Queue in use on ChatGPT](./docs/usage.gif)
 
-## Installation
-
-### From the Chrome Web Store
-
-The store listing will be linked here after the first public release.
-
-### From a local build
-
-You need Node.js and pnpm. Use the Node.js version in `.nvmrc` and pnpm 10.
-
-```bash
-git clone https://github.com/technway/chatgpt-message-queue.git
-cd chatgpt-message-queue
-pnpm install
-pnpm build
-```
-
-Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and select `.output/chrome-mv3`.
-
 ## Development
 
 Start a development build with:
@@ -79,22 +88,6 @@ pnpm dev
 ```
 
 The development extension is generated in `.output/chrome-mv3-dev`. Edit source files under `src/`; WXT rebuilds the extension during development.
-
-Available commands:
-
-```text
-pnpm dev              Start the Chrome development build
-pnpm dev:firefox      Start the Firefox development build
-pnpm build            Build the Chrome extension
-pnpm build:firefox    Build the Firefox extension
-pnpm test             Run unit tests
-pnpm test:e2e         Build the extension and run browser E2E tests
-pnpm check            Run Biome checks
-pnpm format           Format files with Biome
-pnpm compile          Type-check without emitting files
-pnpm zip              Create the Chrome Web Store ZIP
-pnpm zip:firefox      Create a Firefox distribution archive
-```
 
 For browser tests, install Playwright Chromium once:
 
@@ -120,6 +113,10 @@ See the full statement in [PRIVACY.md](./PRIVACY.md).
 ## Contributing
 
 Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The short version is: open or find an issue, keep ChatGPT DOM knowledge inside the adapter, add tests for behavior changes, and run the local quality checks before submitting.
+
+## License
+
+This project is licensed under the [GNU General Public License v3.0](./LICENSE).
 
 ## Release
 
