@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./src/assets/logo.png" alt="AI Chat Queue logo" width="100" />
   <h1>AI Chat Queue</h1>
-  <p><strong>Queue the next steps while ChatGPT is still working.</strong> Keep writing while ChatGPT is generating. Messages wait in a local FIFO queue and send automatically when ChatGPT is ready.</p>
+  <p>Queue follow-up messages while your AI chat is generating, then send them automatically in order when it’s ready.</p>
   <p>
     <a href="https://github.com/technway/ai-chat-queue/actions/workflows/validation.yml"><img src="https://img.shields.io/github/actions/workflow/status/technway/ai-chat-queue/validation.yml?branch=main&label=CI&logo=github" alt="CI status" /></a>
     <a href="https://github.com/technway/ai-chat-queue/stargazers"><img src="https://img.shields.io/github/stars/technway/ai-chat-queue?label=Stars&logo=github" alt="GitHub stars" /></a>
@@ -57,6 +57,8 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 6. Queue state and UI preferences are stored locally per conversation. After a reload, pending work is restored paused so it can be explicitly resumed.
 
 The extension does not send messages to its own service: it operates on the ChatGPT page already open in the browser.
+
+The diagram below uses ChatGPT as the current provider example, while the shared runtime is designed to support additional AI chat providers.
 
 ```mermaid
 flowchart TD
