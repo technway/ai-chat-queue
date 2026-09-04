@@ -1,11 +1,11 @@
 # Privacy
 
-ChatGPT Message Queue is designed to operate locally in the browser.
+AI Chat Queue is designed to operate locally in the browser.
 
 ## Data handling
 
 - The extension does not collect, transmit, sell, or share user data.
-- There is no Message Queue backend, analytics service, telemetry, account system, or remote database.
+- There is no AI Chat Queue backend, analytics service, telemetry, account system, or remote database.
 - Message text is read only to intercept a busy-state send, display the local queue, and submit the queued text through the ChatGPT composer.
 - Queued messages and queue preferences are stored with `chrome.storage.local` and scoped to the current ChatGPT conversation.
 - Sent items are removed from queue storage. After a reload, interrupted queue work is restored as pending and waits for the user to resume it.

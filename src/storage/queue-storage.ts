@@ -261,7 +261,7 @@ function createEphemeralStorageItem(scope: string): QueueStorageItem {
         try {
           await createWxtStorageItem(staleScope).removeValue();
         } catch (error) {
-          console.error("[message-queue] queue storage removal failed", {
+          console.error("[ai-chat-queue] queue storage removal failed", {
             error,
             scope: staleScope,
           });
@@ -315,7 +315,7 @@ export class QueueStorage {
 
       return parseSnapshot(value);
     } catch (error) {
-      console.error("[message-queue] queue storage read failed", { error });
+      console.error("[ai-chat-queue] queue storage read failed", { error });
       return createDefaultSnapshot();
     } finally {
       clearTimeout(timeout);
@@ -334,7 +334,7 @@ export class QueueStorage {
       try {
         await this.item.setValue(value);
       } catch (error) {
-        console.error("[message-queue] queue storage write failed", { error });
+        console.error("[ai-chat-queue] queue storage write failed", { error });
       }
     });
   }

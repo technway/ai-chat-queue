@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping improve ChatGPT Message Queue.
+Thanks for helping improve AI Chat Queue.
 
 This project follows the practical recommendations in the [Open Source Guides](https://opensource.guide/).
 

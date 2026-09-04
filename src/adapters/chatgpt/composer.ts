@@ -196,7 +196,7 @@ export class ChatGptComposerAdapter {
       existingContent.trim().length > 0 && existingContent !== content;
 
     if (hasUserDraft) {
-      console.log("[message-queue] automatic send deferred", {
+      console.log("[ai-chat-queue] automatic send deferred", {
         draftLength: existingContent.length,
         reason: "user-draft-present",
       });
@@ -218,7 +218,7 @@ export class ChatGptComposerAdapter {
     const activeContent = readComposer(activeComposer);
 
     if (activeContent !== content) {
-      console.log("[message-queue] automatic send deferred", {
+      console.log("[ai-chat-queue] automatic send deferred", {
         actualLength: activeContent.length,
         expectedLength: content.length,
         reason: "composer-changed",

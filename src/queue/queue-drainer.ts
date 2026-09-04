@@ -111,7 +111,7 @@ export class QueueDrainer {
       if (result === "deferred") {
         this.options.queue.markPending(item.id);
         this.armed = true;
-        console.log("[message-queue] queue drain deferred", { id: item.id });
+        console.log("[ai-chat-queue] queue drain deferred", { id: item.id });
         return;
       }
 
@@ -119,16 +119,16 @@ export class QueueDrainer {
         this.options.queue.markPending(item.id);
         this.armed = true;
         staged = true;
-        console.log("[message-queue] queued message staged", { id: item.id });
+        console.log("[ai-chat-queue] queued message staged", { id: item.id });
         return;
       }
 
       this.options.queue.markSent(item.id);
-      console.log("[message-queue] queued message sent", { id: item.id });
+      console.log("[ai-chat-queue] queued message sent", { id: item.id });
     } catch (error) {
       this.options.queue.markFailed(item.id);
       this.halted = true;
-      console.error("[message-queue] queue draining halted", {
+      console.error("[ai-chat-queue] queue draining halted", {
         error,
         id: item.id,
       });

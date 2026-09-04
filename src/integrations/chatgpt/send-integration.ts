@@ -149,14 +149,14 @@ export class ChatGptSendIntegration {
     try {
       const item = this.queue.enqueue(content);
 
-      console.log("[message-queue] message queued", {
+      console.log("[ai-chat-queue] message queued", {
         id: item.id,
         length: content.length,
         lines: content.split(/\r\n|\r|\n/).length,
         state,
       });
     } catch (error) {
-      console.error("[message-queue] failed to queue message", { error });
+      console.error("[ai-chat-queue] failed to queue message", { error });
       return false;
     }
 

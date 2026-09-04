@@ -97,14 +97,14 @@ export default defineContentScript({
   matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
   cssInjectionMode: "ui",
   async main(ctx) {
-    console.log("[message-queue] extension loaded");
+    console.log("[ai-chat-queue] extension loaded");
 
     const generationState = new ChatGptAdapter({ root: document });
     const composer = new ChatGptComposerAdapter(document);
     let queueScope = getCurrentQueueScope();
     let queueStorage = createQueueStorageForScope(queueScope);
     const restored = await queueStorage.load();
-    console.log("[message-queue] queue storage ready", {
+    console.log("[ai-chat-queue] queue storage ready", {
       count: restored.items.length,
       persistent: isPersistentQueueScope(queueScope),
       scope: queueScope,
@@ -191,7 +191,7 @@ export default defineContentScript({
       switchingConversation = false;
       queue.replace([...nextSnapshot.items, ...newlyQueuedItems]);
       refreshQueueUi();
-      console.log("[message-queue] queue conversation changed", {
+      console.log("[ai-chat-queue] queue conversation changed", {
         count: queue.getState().total,
         scope: queueScope,
       });
@@ -246,10 +246,10 @@ export default defineContentScript({
 
       if (draftBlocked) {
         drainer.pause();
-        console.log("[message-queue] queue paused for active draft");
+        console.log("[ai-chat-queue] queue paused for active draft");
       } else if (!settings.paused) {
         drainer.resume();
-        console.log("[message-queue] queue resumed after draft cleared");
+        console.log("[ai-chat-queue] queue resumed after draft cleared");
         queueMicrotask(drainIfReady);
       }
 
@@ -283,7 +283,7 @@ export default defineContentScript({
 
     const stopIntegration = integration.start(document);
     const stopObserving = generationState.observeState((state) => {
-      console.log("[message-queue] ChatGPT state changed", { state });
+      console.log("[ai-chat-queue] ChatGPT state changed", { state });
 
       if (state === "generating") {
         if (isCurrentConversation() && settings.autoSend && !isQueuePaused()) {
@@ -304,7 +304,7 @@ export default defineContentScript({
     syncDraftGuard();
 
     const ui = await createShadowRootUi(ctx, {
-      name: "chatgpt-message-queue",
+      name: "ai-chat-queue",
       position: "inline",
       anchor: composerContainerSelector,
       append(anchor, shadowHost) {
@@ -319,7 +319,7 @@ export default defineContentScript({
         shadowHost.style.setProperty("flex", "none", "important");
         syncQueueTheme(shadowHost);
 
-        console.log("[message-queue] queue UI mounted", {
+        console.log("[ai-chat-queue] queue UI mounted", {
           parent: shadowHost.parentElement?.className || null,
         });
 
@@ -417,7 +417,7 @@ export default defineContentScript({
       if (!ui.shadowHost.isConnected) {
         // ChatGPT can remove unknown footer children without replacing the footer.
         appendQueueHost(anchor, ui.shadowHost);
-        console.log("[message-queue] queue UI reattached", {
+        console.log("[ai-chat-queue] queue UI reattached", {
           parent: ui.shadowHost.parentElement?.className || null,
         });
       }

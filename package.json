@@ -1,5 +1,5 @@
 {
-  "name": "chatgpt-message-queue",
+  "name": "ai-chat-queue",
   "description": "Queue ChatGPT messages while a response is generating.",
   "private": true,
   "version": "0.1.0",

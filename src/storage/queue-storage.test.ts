@@ -126,7 +126,7 @@ describe("QueueStorage", () => {
       preferences: { collapsed: false },
     });
     expect(consoleError).toHaveBeenCalledWith(
-      "[message-queue] queue storage read failed",
+      "[ai-chat-queue] queue storage read failed",
       { error },
     );
 
@@ -146,7 +146,7 @@ describe("QueueStorage", () => {
       preferences: { collapsed: false },
     });
     expect(consoleError).toHaveBeenCalledWith(
-      "[message-queue] queue storage read failed",
+      "[ai-chat-queue] queue storage read failed",
       {
         error: expect.objectContaining({
           message: "Queue storage read timed out",
@@ -212,7 +212,7 @@ describe("QueueStorage", () => {
     ).not.toThrow();
     await expect(queueStorage.flush()).resolves.toBeUndefined();
     expect(consoleError).toHaveBeenCalledWith(
-      "[message-queue] queue storage write failed",
+      "[ai-chat-queue] queue storage write failed",
       { error },
     );
 

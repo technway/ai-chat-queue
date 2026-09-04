@@ -1,17 +1,17 @@
 <div align="center">
-  <img src="./src/assets/logo.png" alt="ChatGPT Message Queue logo" width="100" />
-  <h1>ChatGPT Message Queue</h1>
+  <img src="./src/assets/logo.png" alt="AI Chat Queue logo" width="100" />
+  <h1>AI Chat Queue</h1>
   <p><strong>Queue the next steps while ChatGPT is still working.</strong> Keep writing while ChatGPT is generating. Messages wait in a local FIFO queue and send automatically when ChatGPT is ready.</p>
   <p>
-    <a href="https://github.com/technway/chatgpt-message-queue/actions/workflows/validation.yml"><img src="https://img.shields.io/github/actions/workflow/status/technway/chatgpt-message-queue/validation.yml?branch=main&label=CI&logo=github" alt="CI status" /></a>
-    <a href="https://github.com/technway/chatgpt-message-queue/stargazers"><img src="https://img.shields.io/github/stars/technway/chatgpt-message-queue?label=Stars&logo=github" alt="GitHub stars" /></a>
-    <img src="https://img.shields.io/github/package-json/v/technway/chatgpt-message-queue?label=Version" alt="Version" />
+    <a href="https://github.com/technway/ai-chat-queue/actions/workflows/validation.yml"><img src="https://img.shields.io/github/actions/workflow/status/technway/ai-chat-queue/validation.yml?branch=main&label=CI&logo=github" alt="CI status" /></a>
+    <a href="https://github.com/technway/ai-chat-queue/stargazers"><img src="https://img.shields.io/github/stars/technway/ai-chat-queue?label=Stars&logo=github" alt="GitHub stars" /></a>
+    <img src="https://img.shields.io/github/package-json/v/technway/ai-chat-queue?label=Version" alt="Version" />
     <img src="https://img.shields.io/badge/Chrome-Extension-4285F4?logo=googlechrome&logoColor=white" alt="Chrome extension" />
     <img src="https://img.shields.io/badge/Manifest-V3-4285F4?logo=googlechrome&logoColor=white" alt="Manifest V3" />
   </p>
 </div>
 
-![ChatGPT Message Queue with three queued messages](./docs/store-screenshot.png)
+![AI Chat Queue with three queued messages](./docs/store-screenshot.png)
 
 ⭐ Find this useful? Star the repo to help more ChatGPT users discover the queue :)
 
@@ -30,8 +30,8 @@ The store listing will be linked here after the first public release.
 You need Node.js and pnpm. Use the Node.js version in `.nvmrc` and pnpm 10.
 
 ```bash
-git clone https://github.com/technway/chatgpt-message-queue.git
-cd chatgpt-message-queue
+git clone https://github.com/technway/ai-chat-queue.git
+cd ai-chat-queue
 pnpm install
 pnpm build
 ```
@@ -77,7 +77,7 @@ The ChatGPT adapter is the only layer that knows ChatGPT's DOM selectors. Queue 
 
 ## Demo
 
-![ChatGPT Message Queue in use on ChatGPT](./docs/usage.gif)
+![AI Chat Queue in use on ChatGPT](./docs/usage.gif)
 
 ## Development
 
@@ -100,7 +100,7 @@ The E2E suite loads the built extension into Chromium and serves `e2e/fake-chatg
 
 ## Privacy and permissions
 
-- Messages are used only for local queue management and are not sent to a ChatGPT Message Queue backend.
+- Messages are used only for local queue management and are not sent to an AI Chat Queue backend.
 - No backend, analytics, telemetry, account service, or remote database is required.
 - No user data is collected by this extension.
 - Queued messages and queue preferences are stored in the browser's local extension storage, scoped to the conversation where they were queued.

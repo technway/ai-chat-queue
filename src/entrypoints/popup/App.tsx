@@ -1,7 +1,7 @@
 import { ArrowUpRight, Star } from "lucide-react";
 import logoUrl from "../../assets/logo.png";
 
-const repositoryUrl = "https://github.com/technway/chatgpt-message-queue";
+const repositoryUrl = "https://github.com/technway/ai-chat-queue";
 
 function App() {
   return (
@@ -10,11 +10,11 @@ function App() {
         <img
           className="size-11 shrink-0 rounded-full border border-popup-border object-contain"
           src={logoUrl}
-          alt="ChatGPT Message Queue logo"
+          alt="AI Chat Queue logo"
         />
         <div className="min-w-0 text-left">
           <h1 className="m-0 truncate text-base font-bold tracking-[-.02em]">
-            Message Queue
+            AI Chat Queue
           </h1>
         </div>
       </header>

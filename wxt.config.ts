@@ -9,7 +9,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
   }),
   manifest: {
-    name: "ChatGPT Message Queue",
+    name: "AI Chat Queue",
     description: "Queue ChatGPT messages while a response is generating.",
     permissions: ["storage"],
   },
