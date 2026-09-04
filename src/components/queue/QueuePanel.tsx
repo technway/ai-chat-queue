@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Pause, Play } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { QueueService } from "../../queue/queue.service";
 import type {
   QueueItem as QueueItemData,
@@ -46,35 +46,58 @@ export function QueuePanel({
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [exitingItems, setExitingItems] = useState<QueueItemData[]>([]);
+  const completedExitIds = useRef(new Set<string>());
+  const exitTimeouts = useRef(new Map<string, number>());
 
   useEffect(() => {
     if (!exitingItem) {
       return;
     }
 
+    const { id } = exitingItem;
+    completedExitIds.current.delete(id);
     setExitingItems((current) =>
-      current.some((item) => item.id === exitingItem.id)
+      current.some((item) => item.id === id)
         ? current
         : [...current, exitingItem],
     );
 
-    window.setTimeout(() => {
-      setExitingItems((current) =>
-        current.filter((item) => item.id !== exitingItem.id),
-      );
+    if (exitTimeouts.current.has(id)) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      completedExitIds.current.add(id);
+      exitTimeouts.current.delete(id);
+      setExitingItems((current) => current.filter((item) => item.id !== id));
     }, 240);
+    exitTimeouts.current.set(id, timeoutId);
   }, [exitingItem]);
 
-  const queuedItems = state.items.filter(isVisibleItem);
-  const exitingIds = new Set(exitingItems.map((item) => item.id));
+  useEffect(() => {
+    return () => {
+      for (const timeoutId of exitTimeouts.current.values()) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, []);
 
-  if (exitingItem) {
-    exitingIds.add(exitingItem.id);
-  }
+  const queuedItems = state.items.filter(isVisibleItem);
+  const activeExitingItem =
+    exitingItem && !completedExitIds.current.has(exitingItem.id)
+      ? exitingItem
+      : undefined;
+  const exitingIds = new Set([
+    ...exitingItems.map((item) => item.id),
+    ...(activeExitingItem ? [activeExitingItem.id] : []),
+  ]);
 
   const items = [
     ...queuedItems,
-    ...[...exitingItems, ...(exitingItem ? [exitingItem] : [])].filter(
+    ...[
+      ...exitingItems,
+      ...(activeExitingItem ? [activeExitingItem] : []),
+    ].filter(
       (item, index, allItems) =>
         !queuedItems.some((queuedItem) => queuedItem.id === item.id) &&
         allItems.findIndex((candidate) => candidate.id === item.id) === index,
