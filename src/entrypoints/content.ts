@@ -123,6 +123,7 @@ export default defineContentScript({
     let refreshQueueUi = () => {};
     let switchingConversation = false;
     let requestConversationSwitch: (scope: string) => void = () => {};
+    let draftBlocked = false;
 
     const stopStorageSubscription = queue.subscribe((event) => {
       const currentScope = getCurrentQueueScope();
@@ -185,7 +186,7 @@ export default defineContentScript({
         paused: nextSnapshot.items.length > 0 || nextSnapshot.settings.paused,
       };
 
-      drainer.reset(settings.paused);
+      drainer.reset(settings.paused || draftBlocked);
 
       switchingConversation = false;
       queue.replace([...nextSnapshot.items, ...newlyQueuedItems]);
@@ -195,7 +196,7 @@ export default defineContentScript({
         scope: queueScope,
       });
 
-      if (!settings.paused) {
+      if (!settings.paused && !draftBlocked) {
         queueMicrotask(drainIfReady);
       }
     };
@@ -220,18 +221,53 @@ export default defineContentScript({
       requestConversationSwitch(currentScope);
       return false;
     };
+    const isQueuePaused = () => settings.paused || draftBlocked;
     const drainIfReady = () => {
       const state = generationState.getState();
 
       if (
         isCurrentConversation() &&
         settings.autoSend &&
-        !settings.paused &&
+        !isQueuePaused() &&
         (state === "available" || state === "unavailable")
       ) {
         void drainer.drainNext();
       }
     };
+
+    const syncDraftGuard = () => {
+      const hasDraft = composer.readMessage().trim().length > 0;
+
+      if (hasDraft === draftBlocked) {
+        return;
+      }
+
+      draftBlocked = hasDraft;
+
+      if (draftBlocked) {
+        drainer.pause();
+        console.log("[message-queue] queue paused for active draft");
+      } else if (!settings.paused) {
+        drainer.resume();
+        console.log("[message-queue] queue resumed after draft cleared");
+        queueMicrotask(drainIfReady);
+      }
+
+      refreshQueueUi();
+    };
+
+    const onComposerInput: EventListener = (event) => {
+      if (
+        composer.isWritingMessage() ||
+        !composer.isComposerTarget(event.target)
+      ) {
+        return;
+      }
+
+      syncDraftGuard();
+    };
+
+    document.addEventListener("input", onComposerInput, true);
 
     const stopQueueSubscription = queue.subscribe((event) => {
       if (event.type !== "queued") {
@@ -239,7 +275,10 @@ export default defineContentScript({
       }
 
       // Wait until the integration clears the submitted draft from the composer.
-      queueMicrotask(drainIfReady);
+      queueMicrotask(() => {
+        syncDraftGuard();
+        drainIfReady();
+      });
     });
 
     const stopIntegration = integration.start(document);
@@ -247,15 +286,13 @@ export default defineContentScript({
       console.log("[message-queue] ChatGPT state changed", { state });
 
       if (state === "generating") {
-        // Restore any draft that was preserved during automatic submission.
-        void composer.restoreDraft();
-        if (isCurrentConversation() && settings.autoSend && !settings.paused) {
+        if (isCurrentConversation() && settings.autoSend && !isQueuePaused()) {
           drainer.markGenerating();
         }
       } else if (
         isCurrentConversation() &&
         settings.autoSend &&
-        !settings.paused &&
+        !isQueuePaused() &&
         (state === "available" || state === "unavailable")
       ) {
         // The unavailable phase stages text. The available phase submits it.
@@ -264,6 +301,7 @@ export default defineContentScript({
     });
 
     await waitForPageHydration();
+    syncDraftGuard();
 
     const ui = await createShadowRootUi(ctx, {
       name: "chatgpt-message-queue",
@@ -296,13 +334,14 @@ export default defineContentScript({
               state,
               exitingItem,
               initialCollapsed: preferences.collapsed,
-              paused: settings.paused,
+              paused: isQueuePaused(),
+              draftBlocked,
               onCollapsedChange(collapsed) {
                 preferences = { ...preferences, collapsed };
                 queueStorage.save(queue.getState(), settings, preferences);
               },
               onPausedChange(paused) {
-                if (!isCurrentConversation()) {
+                if (!isCurrentConversation() || draftBlocked) {
                   return;
                 }
 
@@ -317,7 +356,7 @@ export default defineContentScript({
                 queueStorage.save(queue.getState(), settings, preferences);
                 renderQueue();
 
-                if (!paused) {
+                if (!paused && !draftBlocked) {
                   queueMicrotask(drainIfReady);
                 }
               },
@@ -403,6 +442,7 @@ export default defineContentScript({
       stopObserving();
       stopQueueSubscription();
       stopStorageSubscription();
+      document.removeEventListener("input", onComposerInput, true);
       void queueStorage.flush();
     });
   },

@@ -77,6 +77,23 @@ function isDisabled(element: Element): boolean {
   );
 }
 
+function isVoiceButton(element: Element): boolean {
+  const label = element.getAttribute("aria-label")?.toLowerCase() ?? "";
+
+  if (label.includes("voice") || label.includes("dictation")) {
+    return true;
+  }
+
+  try {
+    return (
+      typeof element.querySelector === "function" &&
+      element.querySelector('use[href*="voice" i]') !== null
+    );
+  } catch {
+    return false;
+  }
+}
+
 function readComposer(composer: Element): string {
   if ("value" in composer && typeof composer.value === "string") {
     return composer.value;
@@ -127,7 +144,7 @@ function writeComposer(composer: Element, content: string): void {
 }
 
 export class ChatGptComposerAdapter {
-  private preservedDraft: string | null = null;
+  private writingMessage = false;
 
   constructor(
     private readonly root: ComposerRoot,
@@ -149,6 +166,10 @@ export class ChatGptComposerAdapter {
     return composer ? readComposer(composer) : "";
   }
 
+  isWritingMessage(): boolean {
+    return this.writingMessage;
+  }
+
   clearMessage(): void {
     const composer = this.findComposer();
 
@@ -157,31 +178,9 @@ export class ChatGptComposerAdapter {
     }
 
     try {
-      writeComposer(composer, "");
+      this.writeMessage(composer, "");
     } catch {
       // Clearing the DOM value is still useful if an input event cannot be sent.
-    }
-  }
-
-  async restoreDraft(): Promise<void> {
-    const draft = this.preservedDraft;
-
-    if (draft === null) {
-      return;
-    }
-
-    await this.waitForDom();
-
-    const composer = this.findComposer();
-
-    if (!composer) {
-      return;
-    }
-
-    try {
-      this.restoreDraftIn(composer);
-    } catch {
-      // Keep the draft for another restoration attempt.
     }
   }
 
@@ -196,21 +195,16 @@ export class ChatGptComposerAdapter {
     const hasUserDraft =
       existingContent.trim().length > 0 && existingContent !== content;
 
-    if (hasUserDraft && !this.findEnabledSendButton()) {
+    if (hasUserDraft) {
       console.log("[message-queue] automatic send deferred", {
         draftLength: existingContent.length,
-        reason: "send-button-unavailable-with-draft",
+        reason: "user-draft-present",
       });
       return "deferred";
     }
 
-    if (hasUserDraft) {
-      // Keep the active draft while the queued message uses ChatGPT's composer.
-      this.preservedDraft = existingContent;
-    }
-
     if (existingContent !== content) {
-      writeComposer(composer, content);
+      this.writeMessage(composer, content);
     }
 
     await this.waitForDom();
@@ -224,10 +218,6 @@ export class ChatGptComposerAdapter {
     const activeContent = readComposer(activeComposer);
 
     if (activeContent !== content) {
-      if (hasUserDraft) {
-        this.restoreDraftIn(activeComposer);
-      }
-
       console.log("[message-queue] automatic send deferred", {
         actualLength: activeContent.length,
         expectedLength: content.length,
@@ -239,11 +229,6 @@ export class ChatGptComposerAdapter {
     const sendButton = this.findEnabledSendButton();
 
     if (!sendButton) {
-      if (hasUserDraft) {
-        this.restoreDraftIn(activeComposer);
-        return "deferred";
-      }
-
       // React enables the button later. Keep the exact queued text for retry.
       return "staged";
     }
@@ -270,13 +255,27 @@ export class ChatGptComposerAdapter {
     return null;
   }
 
+  private writeMessage(composer: Element, content: string): void {
+    this.writingMessage = true;
+
+    try {
+      writeComposer(composer, content);
+    } finally {
+      this.writingMessage = false;
+    }
+  }
+
   private findEnabledSendButton(): HTMLElement | null {
     for (const selector of CHATGPT_SELECTORS.sendButton) {
       try {
         const buttons = this.root.querySelectorAll(selector);
 
         for (const button of buttons) {
-          if (isVisible(button) && !isDisabled(button)) {
+          if (
+            isVisible(button) &&
+            !isDisabled(button) &&
+            !isVoiceButton(button)
+          ) {
             return button as HTMLElement;
           }
         }
@@ -286,19 +285,5 @@ export class ChatGptComposerAdapter {
     }
 
     return null;
-  }
-
-  private restoreDraftIn(composer: Element): void {
-    const draft = this.preservedDraft;
-
-    if (draft === null) {
-      return;
-    }
-
-    writeComposer(composer, draft);
-    this.preservedDraft = null;
-    console.log("[message-queue] user draft restored", {
-      length: draft.length,
-    });
   }
 }

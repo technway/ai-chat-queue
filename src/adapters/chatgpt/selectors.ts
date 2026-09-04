@@ -22,6 +22,7 @@ export const CHATGPT_SELECTORS = {
     'button[data-testid="send-button"]',
     'button[aria-label="Send prompt"]',
     'button[aria-label="Send message"]',
+    'form[data-type="unified-composer"] button.composer-submit-button-color',
   ],
   stopButton: [
     'button[data-testid="stop-button"]',

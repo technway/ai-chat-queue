@@ -25,6 +25,7 @@ export interface QueuePanelProps {
   readonly onPausedChange?: (paused: boolean) => void;
   readonly onEditingChange?: (id: string | null) => void;
   readonly exitingItem?: QueueItemData;
+  readonly draftBlocked?: boolean;
 }
 
 function isVisibleItem(item: QueueItemData): boolean {
@@ -40,6 +41,7 @@ export function QueuePanel({
   onPausedChange,
   onEditingChange,
   exitingItem,
+  draftBlocked = false,
 }: QueuePanelProps) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,8 +104,15 @@ export function QueuePanel({
         <div className="flex items-center">
           <QueueIconButton
             type="button"
+            disabled={draftBlocked}
             aria-label={paused ? "Resume queue" : "Pause queue"}
-            title={paused ? "Resume queue" : "Pause queue"}
+            title={
+              draftBlocked
+                ? "Clear or queue your draft before resuming"
+                : paused
+                  ? "Resume queue"
+                  : "Pause queue"
+            }
             onClick={() => onPausedChange?.(!paused)}
           >
             {paused ? <Play {...iconProps} /> : <Pause {...iconProps} />}

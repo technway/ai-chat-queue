@@ -177,6 +177,78 @@ describe("ChatGptComposerAdapter", () => {
     expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
   });
 
+  it("uses the signed-in composer submit button fallback", async () => {
+    const composer = {
+      value: "",
+      dispatchEvent: vi.fn(),
+    } as unknown as Element;
+    const sendButton = {
+      disabled: false,
+      getAttribute: vi.fn(() => null),
+      closest: vi.fn(() => null),
+      querySelector: vi.fn(() => null),
+      click: vi.fn(),
+    } as unknown as Element;
+    const adapter = new ChatGptComposerAdapter(
+      {
+        querySelectorAll: vi.fn((selector: string) => {
+          if (selector === CHATGPT_SELECTORS.composer[0]) {
+            return [composer];
+          }
+
+          if (
+            selector ===
+            'form[data-type="unified-composer"] button.composer-submit-button-color'
+          ) {
+            return [sendButton];
+          }
+
+          return [];
+        }) as unknown as ParentNode["querySelectorAll"],
+      },
+      async () => undefined,
+    );
+
+    await expect(adapter.send("Queued message")).resolves.toBe("sent");
+    expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
+  });
+
+  it("does not treat the signed-in voice control as a send button", async () => {
+    const composer = {
+      value: "",
+      dispatchEvent: vi.fn(),
+    } as unknown as Element;
+    const voiceButton = {
+      disabled: false,
+      getAttribute: vi.fn(() => "Start Voice"),
+      closest: vi.fn(() => null),
+      querySelector: vi.fn(() => null),
+      click: vi.fn(),
+    } as unknown as Element;
+    const adapter = new ChatGptComposerAdapter(
+      {
+        querySelectorAll: vi.fn((selector: string) => {
+          if (selector === CHATGPT_SELECTORS.composer[0]) {
+            return [composer];
+          }
+
+          if (
+            selector ===
+            'form[data-type="unified-composer"] button.composer-submit-button-color'
+          ) {
+            return [voiceButton];
+          }
+
+          return [];
+        }) as unknown as ParentNode["querySelectorAll"],
+      },
+      async () => undefined,
+    );
+
+    await expect(adapter.send("Queued message")).resolves.toBe("staged");
+    expect("click" in voiceButton && voiceButton.click).not.toHaveBeenCalled();
+  });
+
   it("submits queued content that is already staged", async () => {
     const composer = {
       value: "Queued message",
@@ -231,7 +303,7 @@ describe("ChatGptComposerAdapter", () => {
     expect(composer.dispatchEvent).not.toHaveBeenCalled();
   });
 
-  it("restores the user draft after submitting a queued message", async () => {
+  it("does not replace a user draft when the send button is enabled", async () => {
     const composer = {
       value: "User draft",
       dispatchEvent: vi.fn(),
@@ -263,13 +335,9 @@ describe("ChatGptComposerAdapter", () => {
       async () => undefined,
     );
 
-    await expect(adapter.send("Queued message")).resolves.toBe("sent");
-    expect("value" in composer && composer.value).toBe("");
-
-    await adapter.restoreDraft();
-
+    await expect(adapter.send("Queued message")).resolves.toBe("deferred");
     expect("value" in composer && composer.value).toBe("User draft");
-    expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
+    expect("click" in sendButton && sendButton.click).not.toHaveBeenCalled();
   });
 
   it("leaves queued text staged when automatic submission is unavailable", async () => {
