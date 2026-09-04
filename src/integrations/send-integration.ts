@@ -1,15 +1,15 @@
-import type { ChatGptAdapter } from "../../adapters/chatgpt/adapter";
-import type { ChatGptComposerAdapter } from "../../adapters/chatgpt/composer";
-import type { GenerationState } from "../../adapters/chatgpt/generation-state";
-import type { QueueService } from "../../queue/queue.service";
+import type {
+  GenerationState,
+  ProviderComposerPort,
+  ProviderGenerationPort,
+} from "../providers/provider";
+import type { QueueService } from "../queue/queue.service";
 
-type ComposerPort = Pick<
-  ChatGptComposerAdapter,
-  "isComposerTarget" | "isSendButtonTarget" | "readMessage" | "clearMessage"
->;
-
-type GenerationStatePort = Pick<ChatGptAdapter, "getState">;
-type QueuePort = Pick<QueueService, "enqueue" | "getState">;
+export type SendIntegrationOptions = {
+  readonly composer: ProviderComposerPort;
+  readonly generationState: ProviderGenerationPort;
+  readonly queue: Pick<QueueService, "enqueue" | "getState">;
+};
 
 interface SendActionEvent {
   readonly isTrusted: boolean;
@@ -24,29 +24,23 @@ interface KeyboardSendEvent extends SendActionEvent {
   readonly isComposing: boolean;
 }
 
-export interface ChatGptSendIntegrationOptions {
-  readonly composer: ComposerPort;
-  readonly generationState: GenerationStatePort;
-  readonly queue: QueuePort;
-}
-
 function cancelSend(event: SendActionEvent): void {
   event.preventDefault();
   event.stopImmediatePropagation();
 }
 
-function hasUnfinishedItems(queue: QueuePort): boolean {
+function hasUnfinishedItems(queue: SendIntegrationOptions["queue"]): boolean {
   const { failed, pending, sending } = queue.getState().counts;
   return failed > 0 || pending > 0 || sending > 0;
 }
 
-export class ChatGptSendIntegration {
-  private readonly composer: ComposerPort;
-  private readonly generationState: GenerationStatePort;
-  private readonly queue: QueuePort;
+export class SendIntegration {
+  private readonly composer: ProviderComposerPort;
+  private readonly generationState: ProviderGenerationPort;
+  private readonly queue: SendIntegrationOptions["queue"];
   private queuedPointerTarget: EventTarget | null = null;
 
-  constructor(options: ChatGptSendIntegrationOptions) {
+  constructor(options: SendIntegrationOptions) {
     this.composer = options.composer;
     this.generationState = options.generationState;
     this.queue = options.queue;
@@ -93,11 +87,7 @@ export class ChatGptSendIntegration {
   private handlePointerDown(event: SendActionEvent): void {
     this.queuedPointerTarget = null;
 
-    if (!event.isTrusted) {
-      return;
-    }
-
-    if (!this.composer.isSendButtonTarget(event.target)) {
+    if (!event.isTrusted || !this.composer.isSendButtonTarget(event.target)) {
       return;
     }
 
@@ -113,7 +103,6 @@ export class ChatGptSendIntegration {
     }
 
     if (this.queuedPointerTarget === event.target) {
-      // A pointer send was already queued. Block its matching native click.
       this.queuedPointerTarget = null;
       cancelSend(event);
       return;
@@ -131,7 +120,6 @@ export class ChatGptSendIntegration {
   private enqueueWhenBusy(event: SendActionEvent): boolean {
     const state: GenerationState = this.generationState.getState();
 
-    // Preserve FIFO order during ChatGPT's brief available state transitions.
     if (
       state !== "generating" &&
       state !== "unavailable" &&

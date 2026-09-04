@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import type { GenerationState } from "../../adapters/chatgpt/generation-state";
-import { MessageQueue } from "../../queue/queue";
-import { QueueService } from "../../queue/queue.service";
-import { ChatGptSendIntegration } from "./send-integration";
+import type { GenerationState } from "../providers/provider";
+import { MessageQueue } from "../queue/queue";
+import { QueueService } from "../queue/queue.service";
+import { SendIntegration } from "./send-integration";
 
 class TestEventTarget {
   private readonly listeners = new Map<string, Set<EventListener>>();
@@ -75,7 +75,7 @@ function createHarness(initialState: GenerationState, initialDraft = "Hello") {
   );
   const queueListener = vi.fn();
   queue.subscribe(queueListener);
-  const integration = new ChatGptSendIntegration({
+  const integration = new SendIntegration({
     composer,
     generationState: { getState: () => generationState },
     queue,

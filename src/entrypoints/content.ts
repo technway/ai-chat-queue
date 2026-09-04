@@ -1,21 +1,16 @@
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
-import { ChatGptAdapter } from "../adapters/chatgpt/adapter";
-import { ChatGptComposerAdapter } from "../adapters/chatgpt/composer";
-import { CHATGPT_SELECTORS } from "../adapters/chatgpt/selectors";
 import { QueuePanel } from "../components/queue/QueuePanel";
 import "../styles/tailwind.css";
-import { ChatGptSendIntegration } from "../integrations/chatgpt/send-integration";
+import { SendIntegration } from "../integrations/send-integration";
+import type { Provider } from "../providers/provider";
+import { providerRegistry } from "../providers/registry";
 import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
 import type { QueueItem as QueueItemData } from "../queue/queue.types";
 import { QueueDrainer } from "../queue/queue-drainer";
-import {
-  createQueueStorageForScope,
-  getConversationScope,
-  isPersistentQueueScope,
-} from "../storage/queue-storage";
+import { createQueueStorageForScope } from "../storage/queue-storage";
 
 function appendQueueHost(anchor: Element, shadowHost: Element): void {
   // A form fallback must remain intact because replacing it breaks submission.
@@ -52,29 +47,8 @@ async function waitForPageHydration(): Promise<void> {
   await waitForAnimationFrame();
 }
 
-type QueueTheme = "light" | "dark";
-
-function getQueueTheme(): QueueTheme | undefined {
-  const root = document.documentElement;
-  const dataTheme = root.dataset.theme;
-
-  if (dataTheme === "light" || dataTheme === "dark") {
-    return dataTheme;
-  }
-
-  if (root.classList.contains("light")) {
-    return "light";
-  }
-
-  if (root.classList.contains("dark")) {
-    return "dark";
-  }
-
-  return undefined;
-}
-
-function syncQueueTheme(shadowHost: HTMLElement): void {
-  const theme = getQueueTheme();
+function syncQueueTheme(provider: Provider, shadowHost: HTMLElement): void {
+  const theme = provider.getTheme(document);
 
   if (theme === "light" || theme === "dark") {
     shadowHost.dataset.theme = theme;
@@ -83,30 +57,34 @@ function syncQueueTheme(shadowHost: HTMLElement): void {
   }
 }
 
-function getCurrentQueueScope(): string {
-  const matches = (selectors: readonly string[]) =>
-    document.querySelector(selectors.join(",")) !== null;
-
-  return getConversationScope(new URL(location.href), {
-    loggedOut: matches(CHATGPT_SELECTORS.loggedOut),
-    temporary: matches(CHATGPT_SELECTORS.temporaryChat),
-  });
+function getCurrentQueueScope(provider: Provider): string {
+  return provider.getQueueScope(new URL(location.href), document);
 }
 
 export default defineContentScript({
-  matches: ["https://chatgpt.com/*", "https://chat.openai.com/*"],
+  matches: providerRegistry.urlPatterns,
   cssInjectionMode: "ui",
   async main(ctx) {
+    const provider = providerRegistry.get(new URL(location.href));
+
+    if (!provider) {
+      return;
+    }
+
     console.log("[ai-chat-queue] extension loaded");
 
-    const generationState = new ChatGptAdapter({ root: document });
-    const composer = new ChatGptComposerAdapter(document);
-    let queueScope = getCurrentQueueScope();
-    let queueStorage = createQueueStorageForScope(queueScope);
+    const generationState = provider.createGenerationState(document);
+    const composer = provider.createComposer(document);
+    let queueScope = getCurrentQueueScope(provider);
+    let queueStorage = createQueueStorageForScope(
+      provider.id,
+      queueScope,
+      provider.isPersistentQueueScope(queueScope),
+    );
     const restored = await queueStorage.load();
     console.log("[ai-chat-queue] queue storage ready", {
       count: restored.items.length,
-      persistent: isPersistentQueueScope(queueScope),
+      persistent: provider.isPersistentQueueScope(queueScope),
       scope: queueScope,
     });
     let settings = {
@@ -118,15 +96,14 @@ export default defineContentScript({
     const queue = new QueueService(
       new MessageQueue({ initialItems: restored.items }),
     );
-    const composerContainerSelector =
-      CHATGPT_SELECTORS.composerContainer.join(",");
+    const composerContainerSelector = provider.composerContainerSelector;
     let refreshQueueUi = () => {};
     let switchingConversation = false;
     let requestConversationSwitch: (scope: string) => void = () => {};
     let draftBlocked = false;
 
     const stopStorageSubscription = queue.subscribe((event) => {
-      const currentScope = getCurrentQueueScope();
+      const currentScope = getCurrentQueueScope(provider);
 
       if (switchingConversation || currentScope !== queueScope) {
         requestConversationSwitch(currentScope);
@@ -136,7 +113,7 @@ export default defineContentScript({
       queueStorage.save(event.state, settings, preferences);
     });
 
-    const integration = new ChatGptSendIntegration({
+    const integration = new SendIntegration({
       composer,
       generationState,
       queue,
@@ -160,9 +137,13 @@ export default defineContentScript({
       previousStorage.save(queue.getState(), settings, preferences);
       await previousStorage.flush();
 
-      const nextStorage = createQueueStorageForScope(targetScope);
+      const nextStorage = createQueueStorageForScope(
+        provider.id,
+        targetScope,
+        provider.isPersistentQueueScope(targetScope),
+      );
       const nextSnapshot = await nextStorage.load();
-      const latestScope = getCurrentQueueScope();
+      const latestScope = getCurrentQueueScope(provider);
 
       if (latestScope !== targetScope) {
         switchingConversation = false;
@@ -212,7 +193,7 @@ export default defineContentScript({
     };
 
     const isCurrentConversation = () => {
-      const currentScope = getCurrentQueueScope();
+      const currentScope = getCurrentQueueScope(provider);
 
       if (!switchingConversation && currentScope === queueScope) {
         return true;
@@ -257,10 +238,9 @@ export default defineContentScript({
     };
 
     const onComposerInput: EventListener = (event) => {
-      if (
-        composer.isWritingMessage() ||
-        !composer.isComposerTarget(event.target)
-      ) {
+      // Programmatic composer updates from the drainer dispatch untrusted
+      // input events. Only user input should pause the queue for a draft.
+      if (!event.isTrusted || !composer.isComposerTarget(event.target)) {
         return;
       }
 
@@ -313,11 +293,11 @@ export default defineContentScript({
       inheritStyles: true,
       isolateEvents: true,
       onMount(container, _shadow, shadowHost) {
-        // The host must participate in ChatGPT's composer layout.
+        // The host must participate in the provider's composer layout.
         shadowHost.style.setProperty("display", "block", "important");
         shadowHost.style.setProperty("width", "100%", "important");
         shadowHost.style.setProperty("flex", "none", "important");
-        syncQueueTheme(shadowHost);
+        syncQueueTheme(provider, shadowHost);
 
         console.log("[ai-chat-queue] queue UI mounted", {
           parent: shadowHost.parentElement?.className || null,
@@ -402,7 +382,7 @@ export default defineContentScript({
 
     const ensureQueueUi = () => {
       isCurrentConversation();
-      syncQueueTheme(ui.shadowHost);
+      syncQueueTheme(provider, ui.shadowHost);
       const anchor = document.querySelector(composerContainerSelector);
 
       if (!anchor) {
@@ -426,7 +406,7 @@ export default defineContentScript({
     const uiObserver = new MutationObserver(ensureQueueUi);
     uiObserver.observe(document.body, { childList: true, subtree: true });
     const themeObserver = new MutationObserver(() => {
-      syncQueueTheme(ui.shadowHost);
+      syncQueueTheme(provider, ui.shadowHost);
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,

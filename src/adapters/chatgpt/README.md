@@ -1,6 +1,8 @@
-# ChatGPT generation adapter
+# ChatGPT provider adapters
 
-This adapter is the only place that knows how to read ChatGPT's DOM.
+These adapters implement the ChatGPT provider contract. They are the only
+place, together with `src/providers/chatgpt.ts`, that knows how to read
+ChatGPT's DOM.
 
 `getState()` returns:
 

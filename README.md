@@ -60,20 +60,19 @@ The extension does not send messages to its own service: it operates on the Chat
 
 ```mermaid
 flowchart TD
-    DOM["ChatGPT DOM"] --> Content["Content script<br/>src/entrypoints/content.ts"]
+    DOM["AI chat DOM"] --> Content["Shared content runtime<br/>src/entrypoints/content.ts"]
+    Content --> Registry["Provider registry"]
+    Registry --> ChatGPT["ChatGPT provider<br/>adapters + selectors"]
 
-    Content --> Adapter["ChatGptAdapter<br/>reads generation state"]
-    Content --> ComposerAdapter["ChatGptComposerAdapter<br/>reads and submits composer text"]
-    Content --> SendIntegration["ChatGptSendIntegration<br/>intercepts busy-state sends"]
-
+    Content --> SendIntegration["Provider-agnostic<br/>send integration"]
     SendIntegration --> QueueService["QueueService"]
     QueueService --> QueueDrainer["QueueDrainer"]
     QueueService --> QueuePanel["QueuePanel<br/>(isolated shadow UI)"]
     QueueService --> QueueStorage["QueueStorage<br/>chrome.storage.local"]
-    QueueDrainer --> Composer["ChatGPT composer"]
+    QueueDrainer --> ChatGPT
 ```
 
-The ChatGPT adapter is the only layer that knows ChatGPT's DOM selectors. Queue behavior is covered independently by unit tests and end-to-end tests against a local fake page.
+Provider-specific DOM knowledge stays inside the active provider. See [the provider checklist](./src/providers/README.md) for adding another AI chat site. Queue behavior is covered independently by unit tests and end-to-end tests against a local fake page.
 
 ## Demo
 

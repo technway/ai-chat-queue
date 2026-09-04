@@ -1,15 +1,14 @@
+import type { MessageSender, MessageSendResult } from "../message-sender";
 import type { QueueService } from "./queue.service";
 
-export type QueueSendResult = "sent" | "deferred" | "staged";
+export type QueueSendResult = MessageSendResult;
 
 type QueueDrainStore = Pick<
   QueueService,
   "claimNextPending" | "getState" | "markPending" | "markSent" | "markFailed"
 >;
 
-export interface QueueMessageSender {
-  send(content: string): QueueSendResult | Promise<QueueSendResult>;
-}
+export type QueueMessageSender = MessageSender;
 
 export interface QueueDrainerOptions {
   readonly queue: QueueDrainStore;

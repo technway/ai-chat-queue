@@ -8,7 +8,7 @@ This project follows the practical recommendations in the [Open Source Guides](h
 
 1. Search existing issues or open a new issue describing the problem and proposed behavior.
 2. Keep changes focused on one problem.
-3. For ChatGPT DOM changes, update the adapter and selector tests rather than querying ChatGPT directly from queue or UI code.
+3. For provider DOM changes, update the provider adapters and selector tests rather than querying a provider directly from queue or UI code.
 
 ## Local setup
 

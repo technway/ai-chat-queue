@@ -1,10 +1,7 @@
+import type { GenerationState } from "../../providers/provider";
 import { CHATGPT_SELECTORS } from "./selectors";
 
-export type GenerationState =
-  | "available"
-  | "generating"
-  | "unavailable"
-  | "unknown";
+export type { GenerationState } from "../../providers/provider";
 
 type QueryRoot = Pick<ParentNode, "querySelectorAll">;
 

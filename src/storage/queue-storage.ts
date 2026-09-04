@@ -35,11 +35,6 @@ interface RemovableQueueStorageItem extends QueueStorageItem {
   removeValue(): Promise<void>;
 }
 
-export interface QueueScopeContext {
-  readonly loggedOut?: boolean;
-  readonly temporary?: boolean;
-}
-
 function createDefaultSnapshot(): QueueStorageSnapshot {
   return {
     items: [],
@@ -138,84 +133,11 @@ function toPersistedState(
   };
 }
 
-function hasTemporaryChatFlag(url: URL): boolean {
-  const names = ["temporary-chat", "temporary_chat", "temporary"];
-
-  return names.some((name) => {
-    if (!url.searchParams.has(name)) {
-      return false;
-    }
-
-    const value = url.searchParams.get(name)?.toLowerCase();
-    return value !== "false" && value !== "0";
-  });
-}
-
-export function getConversationScope(
-  url: URL,
-  context: QueueScopeContext = {},
-): string {
-  const findConversation = (
-    value: string,
-  ): { id: string; route: "c" | "uc" } | undefined => {
-    const segments = value.split("/").filter(Boolean);
-
-    for (let index = segments.length - 2; index >= 0; index -= 1) {
-      const route = segments[index];
-      const id = segments[index + 1];
-
-      if ((route === "c" || route === "uc") && id) {
-        return {
-          id,
-          route,
-        };
-      }
-    }
-
-    return undefined;
-  };
-  const pathConversation = findConversation(url.pathname);
-  const hashValue = url.hash.slice(1);
-  const hashConversation = findConversation(hashValue);
-  const hashParams = new URLSearchParams(hashValue.replace(/^\?/, ""));
-  const queryId =
-    url.searchParams.get("conversationId") ??
-    url.searchParams.get("conversation_id") ??
-    hashParams.get("conversationId") ??
-    hashParams.get("conversation_id");
-  const conversation =
-    pathConversation ??
-    hashConversation ??
-    (queryId ? { id: queryId, route: "c" as const } : undefined);
-  const normalizedPath = url.pathname.replace(/\/+$/, "") || "/";
-  const scopeId = conversation?.id ?? normalizedPath;
-  const temporary =
-    context.temporary === true ||
-    hasTemporaryChatFlag(url) ||
-    url.pathname.includes("/temporary-chat");
-
-  if (temporary) {
-    return `temporary:${scopeId}`;
-  }
-
-  if (context.loggedOut === true || conversation?.route === "uc") {
-    return `unauthenticated:${scopeId}`;
-  }
-
-  if (conversation) {
-    return `conversation:${conversation.id}`;
-  }
-
-  return `page:${normalizedPath}`;
-}
-
-export function isPersistentQueueScope(scope: string): boolean {
-  // Only server backed chats have a stable identity across page reloads.
-  return scope.startsWith("conversation:");
-}
-
-export function getQueueStorageKey(scope: string): `local:${string}` {
-  return `local:message-queue:${encodeURIComponent(scope)}`;
+export function getQueueStorageKey(
+  providerId: string,
+  scope: string,
+): `local:${string}` {
+  return `local:message-queue:${encodeURIComponent(`${providerId}:${scope}`)}`;
 }
 
 function createWxtStorageItem(scope: string): RemovableQueueStorageItem {
@@ -224,20 +146,65 @@ function createWxtStorageItem(scope: string): RemovableQueueStorageItem {
     ...createDefaultSnapshot(),
   };
 
-  return storage.defineItem<unknown>(getQueueStorageKey(scope), {
-    fallback,
-    version: QUEUE_SCHEMA_VERSION,
-    migrations: {
-      1: (oldValue) => ({
-        schemaVersion: QUEUE_SCHEMA_VERSION,
-        ...parseSnapshot(oldValue),
-      }),
-      2: (oldValue) => ({
-        schemaVersion: QUEUE_SCHEMA_VERSION,
-        ...parseSnapshot(oldValue),
-      }),
+  return storage.defineItem<unknown>(
+    `local:message-queue:${encodeURIComponent(scope)}`,
+    {
+      fallback,
+      version: QUEUE_SCHEMA_VERSION,
+      migrations: {
+        1: (oldValue) => ({
+          schemaVersion: QUEUE_SCHEMA_VERSION,
+          ...parseSnapshot(oldValue),
+        }),
+        2: (oldValue) => ({
+          schemaVersion: QUEUE_SCHEMA_VERSION,
+          ...parseSnapshot(oldValue),
+        }),
+      },
     },
-  });
+  );
+}
+
+function createProviderStorageItem(
+  providerId: string,
+  scope: string,
+): RemovableQueueStorageItem {
+  const item = storage.defineItem<unknown>(
+    getQueueStorageKey(providerId, scope),
+    {
+      // null lets us distinguish an empty new namespace from the legacy key.
+      fallback: null,
+      version: QUEUE_SCHEMA_VERSION,
+      migrations: {
+        1: (oldValue) => ({
+          schemaVersion: QUEUE_SCHEMA_VERSION,
+          ...parseSnapshot(oldValue),
+        }),
+        2: (oldValue) => ({
+          schemaVersion: QUEUE_SCHEMA_VERSION,
+          ...parseSnapshot(oldValue),
+        }),
+      },
+    },
+  );
+  // Only ChatGPT has data from the pre-provider storage format. Other
+  // providers must never fall back to another provider's legacy namespace.
+  const legacyItem =
+    providerId === "chatgpt" ? createWxtStorageItem(scope) : undefined;
+
+  return {
+    async getValue() {
+      const value = await item.getValue();
+      return value === null && legacyItem ? legacyItem.getValue() : value;
+    },
+    setValue: (value) => item.setValue(value),
+    async removeValue() {
+      await item.removeValue();
+      if (legacyItem) {
+        await legacyItem.removeValue();
+      }
+    },
+  };
 }
 
 function getEphemeralStorageScopes(scope: string): string[] {
@@ -254,12 +221,15 @@ function getEphemeralStorageScopes(scope: string): string[] {
   return scopes;
 }
 
-function createEphemeralStorageItem(scope: string): QueueStorageItem {
+function createEphemeralStorageItem(
+  providerId: string,
+  scope: string,
+): QueueStorageItem {
   return {
     async getValue() {
       for (const staleScope of getEphemeralStorageScopes(scope)) {
         try {
-          await createWxtStorageItem(staleScope).removeValue();
+          await createProviderStorageItem(providerId, staleScope).removeValue();
         } catch (error) {
           console.error("[ai-chat-queue] queue storage removal failed", {
             error,
@@ -277,14 +247,14 @@ function createEphemeralStorageItem(scope: string): QueueStorageItem {
   };
 }
 
-export function createConversationQueueStorage(url: URL): QueueStorage {
-  return createQueueStorageForScope(getConversationScope(url));
-}
-
-export function createQueueStorageForScope(scope: string): QueueStorage {
-  const item = isPersistentQueueScope(scope)
-    ? createWxtStorageItem(scope)
-    : createEphemeralStorageItem(scope);
+export function createQueueStorageForScope(
+  providerId: string,
+  scope: string,
+  persistent = true,
+): QueueStorage {
+  const item = persistent
+    ? createProviderStorageItem(providerId, scope)
+    : createEphemeralStorageItem(providerId, scope);
 
   return new QueueStorage(item);
 }
@@ -293,7 +263,8 @@ export class QueueStorage {
   private writes = Promise.resolve();
 
   constructor(
-    private readonly item: QueueStorageItem = createWxtStorageItem(
+    private readonly item: QueueStorageItem = createProviderStorageItem(
+      "chatgpt",
       "page:unknown",
     ),
     private readonly readTimeoutMs = STORAGE_READ_TIMEOUT_MS,

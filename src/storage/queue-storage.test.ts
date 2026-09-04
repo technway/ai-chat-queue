@@ -1,9 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { QueueState } from "../queue/queue.types";
 import {
-  getConversationScope,
   getQueueStorageKey,
-  isPersistentQueueScope,
   QueueStorage,
   type QueueStorageItem,
 } from "./queue-storage";
@@ -219,54 +217,15 @@ describe("QueueStorage", () => {
     consoleError.mockRestore();
   });
 
-  it("scopes storage to the current ChatGPT conversation", () => {
-    expect(getConversationScope(new URL("https://chatgpt.com/c/chat-1"))).toBe(
-      "conversation:chat-1",
+  it("creates distinct namespaced keys for each queue scope", () => {
+    expect(getQueueStorageKey("chatgpt", "conversation:chat-1")).not.toBe(
+      getQueueStorageKey("chatgpt", "conversation:chat-2"),
     );
-    expect(getConversationScope(new URL("https://chatgpt.com/uc/chat-2"))).toBe(
-      "unauthenticated:chat-2",
+    expect(getQueueStorageKey("chatgpt", "conversation:chat-1")).toBe(
+      "local:message-queue:chatgpt%3Aconversation%3Achat-1",
     );
-    expect(
-      getConversationScope(
-        new URL("https://chatgpt.com/g/custom-gpt/c/chat-3"),
-      ),
-    ).toBe("conversation:chat-3");
-    expect(
-      getConversationScope(new URL("https://chatgpt.com/#/c/chat-from-hash")),
-    ).toBe("conversation:chat-from-hash");
-    expect(getConversationScope(new URL("https://chatgpt.com/"))).toBe(
-      "page:/",
+    expect(getQueueStorageKey("chatgpt", "conversation:chat-1")).not.toBe(
+      getQueueStorageKey("claude", "conversation:chat-1"),
     );
-    expect(getQueueStorageKey("conversation:chat-1")).not.toBe(
-      getQueueStorageKey("conversation:chat-2"),
-    );
-  });
-
-  it("uses ephemeral scopes for logged out and temporary chats", () => {
-    expect(
-      getConversationScope(new URL("https://chatgpt.com/c/chat-1"), {
-        loggedOut: true,
-      }),
-    ).toBe("unauthenticated:chat-1");
-    expect(
-      getConversationScope(new URL("https://chatgpt.com/c/chat-2"), {
-        temporary: true,
-      }),
-    ).toBe("temporary:chat-2");
-    expect(
-      getConversationScope(new URL("https://chatgpt.com/?temporary-chat=true")),
-    ).toBe("temporary:/");
-    expect(
-      getConversationScope(
-        new URL("https://chatgpt.com/?temporary-chat=false"),
-      ),
-    ).toBe("page:/");
-  });
-
-  it("persists only durable conversation scopes", () => {
-    expect(isPersistentQueueScope("conversation:chat-1")).toBe(true);
-    expect(isPersistentQueueScope("unauthenticated:chat-1")).toBe(false);
-    expect(isPersistentQueueScope("temporary:chat-1")).toBe(false);
-    expect(isPersistentQueueScope("page:/")).toBe(false);
   });
 });

@@ -144,8 +144,6 @@ function writeComposer(composer: Element, content: string): void {
 }
 
 export class ChatGptComposerAdapter {
-  private writingMessage = false;
-
   constructor(
     private readonly root: ComposerRoot,
     private readonly waitForDom: SettleDom = settleDom,
@@ -164,10 +162,6 @@ export class ChatGptComposerAdapter {
   readMessage(): string {
     const composer = this.findComposer();
     return composer ? readComposer(composer) : "";
-  }
-
-  isWritingMessage(): boolean {
-    return this.writingMessage;
   }
 
   clearMessage(): void {
@@ -256,13 +250,7 @@ export class ChatGptComposerAdapter {
   }
 
   private writeMessage(composer: Element, content: string): void {
-    this.writingMessage = true;
-
-    try {
-      writeComposer(composer, content);
-    } finally {
-      this.writingMessage = false;
-    }
+    writeComposer(composer, content);
   }
 
   private findEnabledSendButton(): HTMLElement | null {
