@@ -82,6 +82,25 @@ describe("ChatGptAdapter", () => {
     expect(disconnect).toHaveBeenCalledTimes(1);
   });
 
+  it("reports awaiting while an approval is pending even when sending looks available", () => {
+    const { elements, root } = createMutableRoot();
+    elements.set(CHATGPT_SELECTORS.sendButton[0], [createElement()]);
+    elements.set(CHATGPT_SELECTORS.approval[0], [createElement()]);
+    const adapter = new ChatGptAdapter({ root });
+
+    expect(adapter.getState()).toBe("awaiting");
+    expect(adapter.isGenerating()).toBe(false);
+
+    // A streaming turn takes precedence over a stale approval panel.
+    elements.set(CHATGPT_SELECTORS.stopButton[0], [createElement()]);
+    expect(adapter.getState()).toBe("generating");
+
+    // Resolving the approval returns to the normal available state.
+    elements.delete(CHATGPT_SELECTORS.approval[0]);
+    elements.delete(CHATGPT_SELECTORS.stopButton[0]);
+    expect(adapter.getState()).toBe("available");
+  });
+
   it("returns unknown safely when no DOM root is available", () => {
     const createMutationObserver = vi.fn();
     const adapter = new ChatGptAdapter({ root: null, createMutationObserver });

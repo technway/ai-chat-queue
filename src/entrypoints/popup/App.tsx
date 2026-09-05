@@ -39,11 +39,13 @@ function App() {
               2
             </span>
             <span>
-              Press{" "}
+              Use the{" "}
+              <strong className="font-semibold text-popup-subtle">Queue</strong>{" "}
+              button or{" "}
               <kbd className="rounded-md border border-popup-border bg-white px-1.5 py-0.5 font-mono text-[11px] text-popup-kbd-text shadow-popup-key">
-                Enter
+                ⌘/Ctrl+Shift+Enter
               </kbd>{" "}
-              while ChatGPT is generating.
+              to queue the current draft.
             </span>
           </li>
           <li className="flex items-start gap-2.5">

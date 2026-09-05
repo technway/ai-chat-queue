@@ -13,6 +13,7 @@ export type QueueMessageSender = MessageSender;
 export interface QueueDrainerOptions {
   readonly queue: QueueDrainStore;
   readonly sender: QueueMessageSender;
+  readonly onSendStart?: (content: string) => void;
 }
 
 export class QueueDrainer {
@@ -32,14 +33,26 @@ export class QueueDrainer {
     }
   }
 
+  /**
+   * Prevents the drainer from sending based on the current state alone. A
+   * fresh explicit queue entry must wait for an observed turn (generating or
+   * awaiting) that then completes, instead of being sent just because the
+   * runtime currently reports available/unavailable.
+   */
+  disarm(): void {
+    if (!this.stopped) {
+      this.armed = false;
+    }
+  }
+
   pause(): void {
     this.paused = true;
   }
 
-  resume(): void {
+  resume({ arm = true }: { arm?: boolean } = {}): void {
     if (!this.halted && !this.stopped) {
       this.paused = false;
-      this.armed = true;
+      if (arm) this.armed = true;
     }
   }
 
@@ -105,6 +118,7 @@ export class QueueDrainer {
     let staged = false;
 
     try {
+      this.options.onSendStart?.(item.content);
       const result = await this.options.sender.send(item.content);
 
       if (result === "deferred") {

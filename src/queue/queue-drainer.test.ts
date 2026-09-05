@@ -230,6 +230,42 @@ describe("QueueDrainer", () => {
     expect(queue.getState().items[1]?.status).toBe("sent");
   });
 
+  it("does not drain a fresh entry until a turn is observed", async () => {
+    const queue = createQueue();
+    queue.enqueue("Wait for a turn");
+    const sender = { send: vi.fn(() => "sent" as const) };
+    const drainer = new QueueDrainer({ queue, sender });
+
+    drainer.disarm();
+    await drainer.drainNext();
+
+    expect(sender.send).not.toHaveBeenCalled();
+    expect(queue.getState().counts.pending).toBe(1);
+
+    drainer.markGenerating();
+    await drainer.drainNext();
+
+    expect(sender.send).toHaveBeenCalledWith("Wait for a turn");
+    expect(queue.getState().counts.sent).toBe(1);
+  });
+
+  it("does not arm an idle queue when a draft pause is released", async () => {
+    const queue = createQueue();
+    queue.enqueue("Wait for a turn");
+    const sender = { send: vi.fn(() => "sent" as const) };
+    const drainer = new QueueDrainer({ queue, sender });
+
+    drainer.disarm();
+    drainer.pause();
+    drainer.resume({ arm: false });
+    await drainer.drainNext();
+    expect(sender.send).not.toHaveBeenCalled();
+
+    drainer.markGenerating();
+    await drainer.drainNext();
+    expect(sender.send).toHaveBeenCalledWith("Wait for a turn");
+  });
+
   it("does nothing after cleanup", async () => {
     const queue = createQueue();
     queue.enqueue("Do not send");

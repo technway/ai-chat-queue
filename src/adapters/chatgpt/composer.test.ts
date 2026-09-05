@@ -86,6 +86,24 @@ describe("ChatGptComposerAdapter", () => {
     );
   });
 
+  it("returns the composer focus when requested", () => {
+    const focus = vi.fn();
+    const composer = {
+      value: "Queued from textarea",
+      dispatchEvent: vi.fn(),
+      focus,
+    } as unknown as Element;
+    const adapter = new ChatGptComposerAdapter({
+      querySelectorAll: vi.fn((selector: string) =>
+        selector === CHATGPT_SELECTORS.composer[0] ? [composer] : [],
+      ) as unknown as ParentNode["querySelectorAll"],
+    });
+
+    adapter.focusMessage();
+
+    expect(focus).toHaveBeenCalledWith({ preventScroll: false });
+  });
+
   it("skips hidden composer matches in favor of the visible composer", () => {
     const hiddenComposer = {
       value: "Hidden draft",
