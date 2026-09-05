@@ -1,9 +1,11 @@
 import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { createShadowRootUi } from "wxt/utils/content-script-ui/shadow-root";
+import { QueueDraftButton } from "../components/queue/QueueDraftButton";
 import { QueuePanel } from "../components/queue/QueuePanel";
 import "../styles/tailwind.css";
-import { SendIntegration } from "../integrations/send-integration";
+import { QueueActionIntegration } from "../integrations/queue-action";
+import { placeQueueButton } from "../integrations/queue-button-placement";
 import type { Provider } from "../providers/provider";
 import { providerRegistry } from "../providers/registry";
 import { MessageQueue } from "../queue/queue";
@@ -12,12 +14,15 @@ import type { QueueItem as QueueItemData } from "../queue/queue.types";
 import { QueueDrainer } from "../queue/queue-drainer";
 import { createQueueStorageForScope } from "../storage/queue-storage";
 
-function appendQueueHost(anchor: Element, shadowHost: Element): void {
+function appendPanelHost(anchor: Element, shadowHost: Element): void {
   // A form fallback must remain intact because replacing it breaks submission.
   if (anchor.matches("form")) {
     anchor.before(shadowHost);
-  } else {
-    anchor.prepend(shadowHost);
+    return;
+  }
+
+  if (shadowHost.parentElement !== anchor) {
+    anchor.append(shadowHost);
   }
 }
 
@@ -98,9 +103,12 @@ export default defineContentScript({
     );
     const composerContainerSelector = provider.composerContainerSelector;
     let refreshQueueUi = () => {};
+    let refreshQueueButtonUi = () => {};
+    let refreshQueuePanelUi = () => {};
     let switchingConversation = false;
     let requestConversationSwitch: (scope: string) => void = () => {};
     let draftBlocked = false;
+    let stagedComposerContent: string | null = null;
 
     const stopStorageSubscription = queue.subscribe((event) => {
       const currentScope = getCurrentQueueScope(provider);
@@ -113,14 +121,16 @@ export default defineContentScript({
       queueStorage.save(event.state, settings, preferences);
     });
 
-    const integration = new SendIntegration({
+    const queueAction = new QueueActionIntegration({
       composer,
-      generationState,
       queue,
     });
     const drainer = new QueueDrainer({
       queue,
       sender: composer,
+      onSendStart(content) {
+        stagedComposerContent = content;
+      },
     });
 
     if (settings.paused) {
@@ -159,6 +169,7 @@ export default defineContentScript({
           (item) => !previousItemIds.has(item.id) && !restoredIds.has(item.id),
         );
 
+      stagedComposerContent = null;
       queueScope = targetScope;
       queueStorage = nextStorage;
       preferences = nextSnapshot.preferences;
@@ -217,7 +228,9 @@ export default defineContentScript({
     };
 
     const syncDraftGuard = () => {
-      const hasDraft = composer.readMessage().trim().length > 0;
+      const content = composer.readMessage();
+      const hasDraft =
+        content.trim().length > 0 && content !== stagedComposerContent;
 
       if (hasDraft === draftBlocked) {
         return;
@@ -229,43 +242,58 @@ export default defineContentScript({
         drainer.pause();
         console.log("[ai-chat-queue] queue paused for active draft");
       } else if (!settings.paused) {
-        drainer.resume();
+        // Releasing a draft unblocks the queue but never triggers a send by
+        // itself: the automatic drain is driven by observed generation
+        // completions and explicit user actions, not by the current state.
+        drainer.resume({ arm: false });
         console.log("[ai-chat-queue] queue resumed after draft cleared");
-        queueMicrotask(drainIfReady);
       }
 
       refreshQueueUi();
     };
 
     const onComposerInput: EventListener = (event) => {
-      // Programmatic composer updates from the drainer dispatch untrusted
-      // input events. Only user input should pause the queue for a draft.
-      if (!event.isTrusted || !composer.isComposerTarget(event.target)) {
+      if (!composer.isComposerTarget(event.target)) {
         return;
       }
 
+      // Only user edits take ownership of text staged by the drainer.
+      if (event.isTrusted) stagedComposerContent = null;
       syncDraftGuard();
     };
 
     document.addEventListener("input", onComposerInput, true);
+    document.addEventListener("change", onComposerInput, true);
+    document.addEventListener("compositionend", onComposerInput, true);
 
     const stopQueueSubscription = queue.subscribe((event) => {
       if (event.type !== "queued") {
         return;
       }
 
-      // Wait until the integration clears the submitted draft from the composer.
+      // Wait until the queue action clears the submitted draft from the
+      // composer so the draft guard can release it. Queue entry never triggers
+      // an automatic send by itself: while the current turn is genuinely in
+      // progress the drainer stays armed for the upcoming completion, and in
+      // every other state it is disarmed so spurious available/unavailable DOM
+      // transitions cannot send a freshly staged draft.
       queueMicrotask(() => {
         syncDraftGuard();
-        drainIfReady();
+        const state = generationState.getState();
+
+        if (state === "generating" || state === "awaiting") {
+          drainer.markGenerating();
+        } else {
+          drainer.disarm();
+        }
       });
     });
 
-    const stopIntegration = integration.start(document);
+    const stopQueueAction = queueAction.start(document);
     const stopObserving = generationState.observeState((state) => {
       console.log("[ai-chat-queue] ChatGPT state changed", { state });
 
-      if (state === "generating") {
+      if (state === "generating" || state === "awaiting") {
         if (isCurrentConversation() && settings.autoSend && !isQueuePaused()) {
           drainer.markGenerating();
         }
@@ -275,7 +303,8 @@ export default defineContentScript({
         !isQueuePaused() &&
         (state === "available" || state === "unavailable")
       ) {
-        // The unavailable phase stages text. The available phase submits it.
+        // A completed turn arms the drainer through the generating/awaiting
+        // phase; reaching available/unavailable submits the next message.
         void drainer.drainNext();
       }
     });
@@ -283,17 +312,55 @@ export default defineContentScript({
     await waitForPageHydration();
     syncDraftGuard();
 
-    const ui = await createShadowRootUi(ctx, {
-      name: "ai-chat-queue",
+    const buttonUi = await createShadowRootUi(ctx, {
+      name: "ai-chat-queue-button",
       position: "inline",
       anchor: composerContainerSelector,
       append(anchor, shadowHost) {
-        appendQueueHost(anchor, shadowHost);
+        placeQueueButton(anchor, shadowHost);
       },
       inheritStyles: true,
       isolateEvents: true,
       onMount(container, _shadow, shadowHost) {
-        // The host must participate in the provider's composer layout.
+        syncQueueTheme(provider, shadowHost);
+
+        const root = createRoot(container);
+        const renderButton = () => {
+          root.render(
+            createElement(QueueDraftButton, {
+              disabled: !draftBlocked,
+              onQueue() {
+                queueAction.queueDraft();
+              },
+            }),
+          );
+        };
+
+        refreshQueueButtonUi = renderButton;
+        renderButton();
+
+        return {
+          unmount() {
+            refreshQueueButtonUi = () => {};
+            root.unmount();
+          },
+        };
+      },
+      onRemove(root) {
+        root?.unmount();
+      },
+    });
+
+    const panelUi = await createShadowRootUi(ctx, {
+      name: "ai-chat-queue",
+      position: "inline",
+      anchor: composerContainerSelector,
+      append(anchor, shadowHost) {
+        appendPanelHost(anchor, shadowHost);
+      },
+      inheritStyles: true,
+      isolateEvents: true,
+      onMount(container, _shadow, shadowHost) {
         shadowHost.style.setProperty("display", "block", "important");
         shadowHost.style.setProperty("width", "100%", "important");
         shadowHost.style.setProperty("flex", "none", "important");
@@ -364,12 +431,12 @@ export default defineContentScript({
             (event.type === "status-changed" && event.item.status === "sent");
           renderQueue(event.state, shouldAnimateExit ? event.item : undefined);
         });
-        refreshQueueUi = renderQueue;
+        refreshQueuePanelUi = renderQueue;
         renderQueue();
 
         return {
           unmount() {
-            refreshQueueUi = () => {};
+            refreshQueuePanelUi = () => {};
             stopRendering();
             root.unmount();
           },
@@ -380,33 +447,75 @@ export default defineContentScript({
       },
     });
 
+    refreshQueueUi = () => {
+      refreshQueueButtonUi();
+      refreshQueuePanelUi();
+    };
+
+    let panelMountAnchor: Element | null = null;
     const ensureQueueUi = () => {
       isCurrentConversation();
-      syncQueueTheme(provider, ui.shadowHost);
-      const anchor = document.querySelector(composerContainerSelector);
+      // React can clear or replace the editor without dispatching input.
+      syncDraftGuard();
+      syncQueueTheme(provider, buttonUi.shadowHost);
+      syncQueueTheme(provider, panelUi.shadowHost);
+      const buttonAnchor = document.querySelector(composerContainerSelector);
+      const panelAnchor = buttonAnchor;
 
-      if (!anchor) {
-        return;
+      if (buttonAnchor) {
+        if (!buttonUi.mounted) {
+          buttonUi.mount();
+        } else {
+          placeQueueButton(buttonAnchor, buttonUi.shadowHost);
+        }
+      } else {
+        if (buttonUi.mounted) buttonUi.remove();
       }
 
-      if (!ui.mounted) {
-        ui.mount();
-        return;
-      }
-
-      if (!ui.shadowHost.isConnected) {
-        // ChatGPT can remove unknown footer children without replacing the footer.
-        appendQueueHost(anchor, ui.shadowHost);
-        console.log("[ai-chat-queue] queue UI reattached", {
-          parent: ui.shadowHost.parentElement?.className || null,
-        });
+      if (panelAnchor) {
+        if (!panelUi.mounted) {
+          panelUi.mount();
+        } else if (
+          !panelUi.shadowHost.isConnected ||
+          panelMountAnchor !== panelAnchor
+        ) {
+          appendPanelHost(panelAnchor, panelUi.shadowHost);
+        }
+        panelMountAnchor = panelAnchor;
+      } else {
+        if (panelUi.mounted) panelUi.remove();
+        panelMountAnchor = null;
       }
     };
 
-    const uiObserver = new MutationObserver(ensureQueueUi);
+    let layoutFrame = 0;
+    const scheduleLayout = () => {
+      if (!layoutFrame) {
+        layoutFrame = requestAnimationFrame(() => {
+          layoutFrame = 0;
+          ensureQueueUi();
+        });
+      }
+    };
+    const resizeObserver = new ResizeObserver(scheduleLayout);
+    let observedAnchor: Element | null = null;
+    const uiObserver = new MutationObserver(() => {
+      const anchor = document.querySelector(composerContainerSelector);
+      if (anchor !== observedAnchor) {
+        resizeObserver.disconnect();
+        if (anchor) resizeObserver.observe(anchor);
+        observedAnchor = anchor;
+      }
+      scheduleLayout();
+    });
+    window.addEventListener("resize", scheduleLayout);
+    document.addEventListener("scroll", scheduleLayout, true);
+    window.visualViewport?.addEventListener("resize", scheduleLayout);
+    window.visualViewport?.addEventListener("scroll", scheduleLayout);
     uiObserver.observe(document.body, { childList: true, subtree: true });
     const themeObserver = new MutationObserver(() => {
-      syncQueueTheme(provider, ui.shadowHost);
+      syncQueueTheme(provider, buttonUi.shadowHost);
+      syncQueueTheme(provider, panelUi.shadowHost);
     });
     themeObserver.observe(document.documentElement, {
       attributes: true,
@@ -416,13 +525,23 @@ export default defineContentScript({
 
     ctx.onInvalidated(() => {
       uiObserver.disconnect();
+      resizeObserver.disconnect();
+      cancelAnimationFrame(layoutFrame);
+      window.removeEventListener("resize", scheduleLayout);
+      document.removeEventListener("scroll", scheduleLayout, true);
+      window.visualViewport?.removeEventListener("resize", scheduleLayout);
+      window.visualViewport?.removeEventListener("scroll", scheduleLayout);
       themeObserver.disconnect();
       drainer.stop();
-      stopIntegration();
+      buttonUi.remove();
+      panelUi.remove();
+      stopQueueAction();
       stopObserving();
       stopQueueSubscription();
       stopStorageSubscription();
       document.removeEventListener("input", onComposerInput, true);
+      document.removeEventListener("change", onComposerInput, true);
+      document.removeEventListener("compositionend", onComposerInput, true);
       void queueStorage.flush();
     });
   },

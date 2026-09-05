@@ -178,6 +178,24 @@ export class ChatGptComposerAdapter {
     }
   }
 
+  focusMessage(): void {
+    const composer = this.findComposer();
+
+    if (!composer) {
+      return;
+    }
+
+    try {
+      (
+        composer as unknown as {
+          focus?: (options?: { preventScroll?: boolean }) => void;
+        }
+      ).focus?.({ preventScroll: false });
+    } catch {
+      // Losing focus here must never break an explicit queue action.
+    }
+  }
+
   async send(content: string): Promise<"sent" | "deferred" | "staged"> {
     const composer = this.findComposer();
 

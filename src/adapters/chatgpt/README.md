@@ -7,7 +7,8 @@ ChatGPT's DOM.
 `getState()` returns:
 
 - `generating` when a visible stop or pause button exists
-- `available` when the send button is visible and enabled
+- `awaiting` when a tool approval / native "Follow up" surface is visible and the current turn is still unfinished
+- `available` when the send button is visible and enabled (and no approval is pending)
 - `unavailable` when the send button is visible but disabled
 - `unknown` when the expected controls cannot be found safely
 

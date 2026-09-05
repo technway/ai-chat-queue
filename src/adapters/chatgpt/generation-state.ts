@@ -84,6 +84,14 @@ export function detectGenerationState(
     return "generating";
   }
 
+  // ChatGPT can keep the send button enabled while the current turn is still
+  // active (native "Follow up" during a tool approval). Treat any visible
+  // approval/follow-up surface as an unfinished turn so the queue never treats
+  // it as an idle state worth draining into.
+  if (queryFirstVisible(root, CHATGPT_SELECTORS.approval)) {
+    return "awaiting";
+  }
+
   const sendButton = queryFirstVisible(root, CHATGPT_SELECTORS.sendButton);
 
   if (sendButton) {

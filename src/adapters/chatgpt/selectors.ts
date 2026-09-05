@@ -1,5 +1,6 @@
 export const CHATGPT_SELECTORS = {
   composerContainer: [
+    'form[data-type="unified-composer"]',
     "footer.wm-desktop-detailFooter",
     ".wm-app-composerDock",
     '[data-testid="composer"]',
@@ -33,6 +34,15 @@ export const CHATGPT_SELECTORS = {
     'button[data-testid="pause-button"]',
     'button[aria-label="Pause streaming"]',
     'button[aria-label="Pause generating"]',
+  ],
+  approval: [
+    '[data-testid="tool-approval"]',
+    '[data-testid="approve-tool-call"]',
+    '[data-testid="tool-call-approval"]',
+    '[data-testid="composer-follow-up"]',
+    'button[aria-label*="approve tool" i]',
+    'button[aria-label*="Allow tool" i]',
+    'button[aria-label*="Continue generating" i]',
   ],
   loggedOut: ["[data-logged-out]"],
   temporaryChat: [

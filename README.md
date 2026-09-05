@@ -17,7 +17,7 @@
 
 ## What it solves
 
-ChatGPT normally accepts one message while a response is generating. This extension lets you submit follow-up messages without waiting. It displays the pending messages beside the composer and sends them one at a time as each response finishes.
+ChatGPT normally accepts one message while a response is generating. This extension adds a **Queue** button and a <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> shortcut so you can stage any follow-up draft, even while a turn is still active (for example during a tool approval). It displays the pending messages beside the composer and sends them one at a time as each response finishes.
 
 ## Installation
 
@@ -41,7 +41,7 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 ## Usage
 
 1. Open ChatGPT and start a conversation.
-2. Press <kbd>Enter</kbd> while ChatGPT is generating.
+2. Type a message, then use the **Queue** button or <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> to stage it. Normal <kbd>Enter</kbd> keeps ChatGPT's native behavior untouched, so the shortcut never fights the explicit queue action.
 3. Your message waits in the queue, then sends automatically when ChatGPT is ready.
 
 > [!NOTE]
@@ -49,9 +49,9 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 
 ## How queueing works
 
-1. A normal message is sent through ChatGPT unchanged.
-2. If ChatGPT is generating, its send button is unavailable, or unfinished queue work exists, the extension captures the message and adds it to the current conversation's FIFO queue.
-3. When ChatGPT becomes available, the queue drainer places the next message in the composer and submits it.
+1. Queueing is always explicit: the **Queue** button or the <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> shortcut stages the current composer draft. It never depends on the send-button or generation state, so it works while ChatGPT is idle, generating, unavailable, or waiting for a tool approval.
+2. Normal <kbd>Enter</kbd> is left completely native: ChatGPT decides what to do with it, including its own "Follow up" behavior.
+3. The queue drainer watches generation state. When a turn truly finishes, the next message is placed in the composer and submitted automatically. Messages are never sent merely because the send button happens to be enabled mid-turn.
 4. Pending messages can be moved up or down before they are sent.
 5. Queued messages can be edited in place; automatic sending pauses at the edited message while earlier messages continue.
 6. Queue state and UI preferences are stored locally per conversation. After a reload, pending work is restored paused so it can be explicitly resumed.
@@ -66,9 +66,10 @@ flowchart TD
     Content --> Registry["Provider registry"]
     Registry --> ChatGPT["ChatGPT provider<br/>adapters + selectors"]
 
-    Content --> SendIntegration["Provider-agnostic<br/>send integration"]
-    SendIntegration --> QueueService["QueueService"]
+    Content --> QueueAction["Explicit queue action<br/>Queue button + ⌘/Ctrl+Shift+Enter"]
+    QueueAction --> QueueService["QueueService"]
     QueueService --> QueueDrainer["QueueDrainer"]
+    QueueDrainer --> GenerationState["Generation-state observer"]
     QueueService --> QueuePanel["QueuePanel<br/>(isolated shadow UI)"]
     QueueService --> QueueStorage["QueueStorage<br/>chrome.storage.local"]
     QueueDrainer --> ChatGPT
@@ -106,7 +107,7 @@ The E2E suite loads the built extension into Chromium and serves `e2e/fake-chatg
 - No user data is collected by this extension.
 - Queued messages and queue preferences are stored in the browser's local extension storage, scoped to the conversation where they were queued.
 - The `storage` permission is used to persist queued messages and preferences across page reloads.
-- Content-script access is limited to `chatgpt.com` and `chat.openai.com` so the extension can read the composer state, intercept busy-state sends, inject the queue UI, and submit queued text.
+- Content-script access is limited to `chatgpt.com` and `chat.openai.com` so the extension can read the composer state, render the queue button, and submit queued text.
 - The extension requests no tabs, scripting, identity, downloads, or network permissions, and the background service worker does not process user data.
 
 See the full statement in [PRIVACY.md](./PRIVACY.md).

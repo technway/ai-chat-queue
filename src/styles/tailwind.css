@@ -61,12 +61,15 @@
 
 @layer base {
   :host {
+    --queue-draft-background: #fff;
+    --queue-draft-foreground: #000;
     --queue-surface: #171717;
     --queue-surface-muted: #262626;
     --queue-text: #f5f5f5;
     --queue-text-muted: #a1a1aa;
     --queue-border: rgb(255 255 255 / 14%);
     --queue-accent: #19c37d;
+    --queue-accent-hover: #21d18a;
     --queue-shadow:
       0 2px 4px color-mix(in srgb, #000 10%, transparent),
       0 8px 20px color-mix(in srgb, #000 14%, transparent),
@@ -77,12 +80,15 @@
   }
 
   :host([data-theme="light"]) {
+    --queue-draft-background: #000;
+    --queue-draft-foreground: #fff;
     --queue-surface: #fff;
     --queue-surface-muted: #f4f4f4;
     --queue-text: #2f2f2f;
     --queue-text-muted: #6b6b6b;
     --queue-border: rgb(0 0 0 / 12%);
     --queue-accent: #10a37f;
+    --queue-accent-hover: #0b8c6d;
     --queue-shadow:
       0 2px 4px rgb(0 0 0 / 8%), 0 8px 20px rgb(0 0 0 / 10%),
       0 20px 40px rgb(0 0 0 / 7%);
@@ -96,9 +102,46 @@
     --queue-text-muted: #a1a1aa;
     --queue-border: rgb(255 255 255 / 14%);
     --queue-accent: #19c37d;
+    --queue-accent-hover: #21d18a;
     --queue-shadow:
       0 2px 4px rgb(0 0 0 / 24%), 0 8px 20px rgb(0 0 0 / 30%),
       0 20px 40px rgb(0 0 0 / 22%);
     color-scheme: dark;
+  }
+}
+
+@layer components {
+  .queue-draft-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 108px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--queue-draft-background);
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: opacity 150ms;
+    background-color: var(--queue-draft-background);
+    box-shadow: 0 4px 12px rgb(0 0 0 / 18%);
+    color: var(--queue-draft-foreground);
+  }
+
+  .queue-draft-button:hover:not(:disabled) {
+    opacity: 0.88;
+  }
+
+  .queue-draft-button:focus-visible {
+    outline: 2px solid var(--queue-draft-background);
+    outline-offset: 3px;
+  }
+
+  .queue-draft-button:disabled {
+    cursor: not-allowed;
+    background-color: var(--queue-surface-muted);
+    border-color: var(--queue-border);
+    color: var(--queue-text-muted);
+    opacity: 0.55;
   }
 }

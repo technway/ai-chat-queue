@@ -24,6 +24,9 @@
       <button type="button" data-testid="fake-finish-generating" disabled>
         Finish generating
       </button>
+      <button type="button" data-testid="fake-request-approval" disabled>
+        Request tool approval
+      </button>
 
       <ol id="sent-messages" aria-label="Sent messages"></ol>
 
@@ -50,6 +53,17 @@
           Stop
         </button>
       </form>
+
+      <div
+        id="tool-approval"
+        data-testid="tool-approval"
+        role="dialog"
+        aria-label="Tool approval"
+        hidden
+      >
+        <p>This tool requires your approval before the response can continue.</p>
+        <button type="button" data-testid="fake-approve">Approve tool</button>
+      </div>
     </main>
 
     <script>
@@ -59,6 +73,11 @@
       const stateLabel = document.querySelector("[data-testid=\"generation-state\"]");
       const startButton = document.querySelector("[data-testid=\"fake-start-generating\"]");
       const finishButton = document.querySelector("[data-testid=\"fake-finish-generating\"]");
+      const requestApprovalButton = document.querySelector(
+        "[data-testid=\"fake-request-approval\"]",
+      );
+      const approvalPanel = document.querySelector("#tool-approval");
+      const approveButton = document.querySelector("[data-testid=\"fake-approve\"]");
       const sentMessages = document.querySelector("#sent-messages");
 
       let state = "available";
@@ -71,17 +90,23 @@
       function updateComposerControls() {
         const hasContent = hasComposerContent();
         sendButton.hidden = !hasContent;
-        sendButton.disabled = state !== "available" || !hasContent;
+        // During "awaiting" the current turn is still unfinished, but ChatGPT
+        // natively allows a follow-up send, so the send button stays enabled.
+        const canSendWhile = state === "available" || state === "awaiting";
+        sendButton.disabled = !canSendWhile || !hasContent;
       }
 
       function setState(nextState, autoFinish = false) {
         state = nextState;
         const generating = state === "generating";
+        const awaiting = state === "awaiting";
 
         stateLabel.textContent = state;
         stopButton.hidden = !generating;
-        startButton.disabled = generating;
+        approvalPanel.hidden = !awaiting;
+        startButton.disabled = generating || awaiting;
         finishButton.disabled = !generating;
+        requestApprovalButton.disabled = !generating;
         document.body.dataset.generationState = state;
         updateComposerControls();
 
@@ -99,8 +124,16 @@
         setState("available");
       }
 
+      function approveTool() {
+        // The response resumes streaming, then completes on its own.
+        setState("generating", true);
+      }
+
       function sendMessage() {
-        if (state !== "available") {
+        // ChatGPT natively accepts sends both when idle and during a pending
+        // approval (the "Follow up" behavior). It refuses them while a
+        // response is streaming.
+        if (state !== "available" && state !== "awaiting") {
           return;
         }
 
@@ -122,6 +155,8 @@
       stopButton.addEventListener("click", finishGeneration);
       startButton.addEventListener("click", () => setState("generating"));
       finishButton.addEventListener("click", finishGeneration);
+      requestApprovalButton.addEventListener("click", () => setState("awaiting"));
+      approveButton.addEventListener("click", approveTool);
       composer.addEventListener("keydown", (event) => {
         if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
           event.preventDefault();

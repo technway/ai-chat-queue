@@ -3,6 +3,7 @@ import type { MessageSender } from "../message-sender";
 export type GenerationState =
   | "available"
   | "generating"
+  | "awaiting"
   | "unavailable"
   | "unknown";
 
@@ -18,11 +19,16 @@ export interface ProviderComposerAdapter extends MessageSender {
   isSendButtonTarget(target: EventTarget | null): boolean;
   readMessage(): string;
   clearMessage(): void;
+  focusMessage(): void;
 }
 
 export type ProviderComposerPort = Pick<
   ProviderComposerAdapter,
-  "isComposerTarget" | "isSendButtonTarget" | "readMessage" | "clearMessage"
+  | "isComposerTarget"
+  | "isSendButtonTarget"
+  | "readMessage"
+  | "clearMessage"
+  | "focusMessage"
 >;
 
 export type ProviderGenerationPort = Pick<

@@ -3,8 +3,41 @@ import { describe, expect, it, vi } from "vitest";
 import { QueueService } from "../../queue/queue.service";
 import type { QueueItem as QueueItemData } from "../../queue/queue.types";
 import { QueueBadge } from "./QueueBadge";
+import { QueueDraftButton } from "./QueueDraftButton";
 import { QueueItem } from "./QueueItem";
 import { QueuePanel } from "./QueuePanel";
+
+describe("QueueDraftButton", () => {
+  it("is disabled without a composer draft and reveals the shortcut", () => {
+    const html = renderToStaticMarkup(
+      <QueueDraftButton disabled onQueue={vi.fn()} />,
+    );
+
+    expect(html).toContain('data-testid="queue-draft-button"');
+    expect(html).toContain("Queue");
+    expect(html).toContain(
+      '<span class="text-[12px] font-semibold leading-none">Queue</span>',
+    );
+    expect(html).toContain(
+      'aria-label="Queue message unavailable. Type a message before adding it to the queue."',
+    );
+    expect(html).toContain(
+      'title="Queue message unavailable: Type a message before adding it to the queue."',
+    );
+    expect(html).toContain('disabled=""');
+  });
+
+  it("is enabled when a composer draft exists", () => {
+    const html = renderToStaticMarkup(
+      <QueueDraftButton disabled={false} onQueue={vi.fn()} />,
+    );
+
+    expect(html).not.toContain('disabled=""');
+    expect(html).toContain('type="button"');
+    expect(html).toContain('aria-label="Queue message (Cmd/Ctrl+Shift+Enter)"');
+    expect(html).toContain('title="Queue message (Cmd/Ctrl+Shift+Enter)"');
+  });
+});
 
 describe("queue components", () => {
   it("hides the panel when no messages need attention", () => {
