@@ -246,6 +246,21 @@ export class ChatGptComposerAdapter {
     }
 
     sendButton.click();
+    await this.waitForDom();
+
+    // HTMLElement.click() only confirms that an event was dispatched. The
+    // live page may ignore it when its controlled editor has not accepted the
+    // staged text yet. Do not remove the queue item until ChatGPT consumes or
+    // replaces that exact draft.
+    const composerAfterClick = this.findComposer();
+
+    if (!composerAfterClick || readComposer(composerAfterClick) === content) {
+      console.log("[ai-chat-queue] automatic send not confirmed", {
+        length: content.length,
+      });
+      return "staged";
+    }
+
     return "sent";
   }
 

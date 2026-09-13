@@ -242,9 +242,8 @@ export default defineContentScript({
         drainer.pause();
         console.log("[ai-chat-queue] queue paused for active draft");
       } else if (!settings.paused) {
-        // Releasing a draft unblocks the queue but never triggers a send by
-        // itself: the automatic drain is driven by observed generation
-        // completions and explicit user actions, not by the current state.
+        // Clearing a draft must not arm an idle queue by itself. A queue
+        // action or an observed active turn decides when draining is safe.
         drainer.resume({ arm: false });
         console.log("[ai-chat-queue] queue resumed after draft cleared");
       }
@@ -271,21 +270,36 @@ export default defineContentScript({
         return;
       }
 
+      // This callback runs synchronously inside enqueue(), before queueDraft()
+      // clears the composer. An enabled send button therefore distinguishes a
+      // genuinely idle composer from a busy composer whose stop/pause selector
+      // was missed and is only reported as unavailable.
+      const stateWhenQueued = generationState.getState();
+
       // Wait until the queue action clears the submitted draft from the
-      // composer so the draft guard can release it. Queue entry never triggers
-      // an automatic send by itself: while the current turn is genuinely in
-      // progress the drainer stays armed for the upcoming completion, and in
-      // every other state it is disarmed so spurious available/unavailable DOM
-      // transitions cannot send a freshly staged draft.
+      // composer so the draft guard can release it.
       queueMicrotask(() => {
         syncDraftGuard();
-        const state = generationState.getState();
 
-        if (state === "generating" || state === "awaiting") {
+        if (
+          stateWhenQueued === "generating" ||
+          stateWhenQueued === "awaiting"
+        ) {
           drainer.markGenerating();
-        } else {
-          drainer.disarm();
+          return;
         }
+
+        if (stateWhenQueued === "unavailable") {
+          // Stage the message while the native send control is unavailable.
+          // When ChatGPT enables it after the active turn, the state observer
+          // retries submission. This fallback keeps selector drift from
+          // permanently stranding queued messages.
+          drainer.markGenerating();
+          void drainer.drainNext();
+          return;
+        }
+
+        drainer.disarm();
       });
     });
 

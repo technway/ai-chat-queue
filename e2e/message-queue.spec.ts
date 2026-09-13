@@ -321,6 +321,52 @@ test("explicit queue while idle does not auto-send until a turn completes", asyn
   await expect(queuePanel(page)).toHaveCount(0);
 });
 
+test("keeps a queued message pending when ChatGPT ignores the send click", async ({
+  page,
+}) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await queueMessage(page, "Retry ignored send");
+  await page.getByTestId("send-button").evaluate((button) => {
+    button.dataset.ignoreClicks = "true";
+  });
+
+  await page.getByTestId("fake-finish-generating").click();
+
+  await expect(queueItems(page).getByTestId("queue-item-preview")).toHaveText([
+    "Retry ignored send",
+  ]);
+  await expect(queueItems(page)).toHaveAttribute("data-status", "pending");
+  await expect(page.locator("#sent-messages li")).toHaveCount(0);
+
+  await page.getByTestId("send-button").evaluate((button) => {
+    delete button.dataset.ignoreClicks;
+  });
+  await page.getByTestId("fake-start-generating").click();
+  await page.getByTestId("fake-finish-generating").click();
+
+  await expect(page.locator("#sent-messages li")).toHaveText([
+    "Retry ignored send",
+  ]);
+  await expect(queuePanel(page)).toHaveCount(0);
+});
+
+test("sends after generation when the active-turn selector is missed", async ({
+  page,
+}) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await page.getByTestId("stop-button").evaluate((button) => button.remove());
+
+  await queueMessage(page, "Send despite selector drift");
+  await page.getByTestId("fake-finish-generating").click();
+
+  await expect(page.locator("#sent-messages li")).toHaveText([
+    "Send despite selector drift",
+  ]);
+  await expect(queuePanel(page)).toHaveCount(0);
+});
+
 test("keeps ChatGPT's native Enter behavior unchanged while generating", async ({
   page,
 }) => {

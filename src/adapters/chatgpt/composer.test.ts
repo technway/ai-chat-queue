@@ -134,7 +134,9 @@ describe("ChatGptComposerAdapter", () => {
       disabled: false,
       getAttribute: vi.fn(() => null),
       closest: vi.fn(() => null),
-      click: vi.fn(),
+      click: vi.fn(() => {
+        if ("value" in composer) composer.value = "";
+      }),
     } as unknown as Element;
     const adapter = new ChatGptComposerAdapter(
       {
@@ -154,9 +156,7 @@ describe("ChatGptComposerAdapter", () => {
     );
 
     await expect(adapter.send("First line\nSecond line")).resolves.toBe("sent");
-    expect("value" in composer && composer.value).toBe(
-      "First line\nSecond line",
-    );
+    expect("value" in composer && composer.value).toBe("");
     expect(composer.dispatchEvent).toHaveBeenCalledWith(
       expect.objectContaining({ type: "input", bubbles: true }),
     );
@@ -172,7 +172,9 @@ describe("ChatGptComposerAdapter", () => {
       disabled: false,
       getAttribute: vi.fn(() => null),
       closest: vi.fn(() => null),
-      click: vi.fn(),
+      click: vi.fn(() => {
+        if ("value" in composer) composer.value = "";
+      }),
     } as unknown as Element;
     const adapter = new ChatGptComposerAdapter(
       {
@@ -205,7 +207,9 @@ describe("ChatGptComposerAdapter", () => {
       getAttribute: vi.fn(() => null),
       closest: vi.fn(() => null),
       querySelector: vi.fn(() => null),
-      click: vi.fn(),
+      click: vi.fn(() => {
+        if ("value" in composer) composer.value = "";
+      }),
     } as unknown as Element;
     const adapter = new ChatGptComposerAdapter(
       {
@@ -276,7 +280,9 @@ describe("ChatGptComposerAdapter", () => {
       disabled: false,
       getAttribute: vi.fn(() => null),
       closest: vi.fn(() => null),
-      click: vi.fn(),
+      click: vi.fn(() => {
+        if ("value" in composer) composer.value = "";
+      }),
     } as unknown as Element;
     const adapter = new ChatGptComposerAdapter(
       {
@@ -298,6 +304,39 @@ describe("ChatGptComposerAdapter", () => {
     await expect(adapter.send("Queued message")).resolves.toBe("sent");
     expect(composer.dispatchEvent).not.toHaveBeenCalled();
     expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a queued message staged when the send click is ignored", async () => {
+    const composer = {
+      value: "Queued message",
+      dispatchEvent: vi.fn(),
+    } as unknown as Element;
+    const sendButton = {
+      disabled: false,
+      getAttribute: vi.fn(() => null),
+      closest: vi.fn(() => null),
+      click: vi.fn(),
+    } as unknown as Element;
+    const adapter = new ChatGptComposerAdapter(
+      {
+        querySelectorAll: vi.fn((selector: string) => {
+          if (includesSelector(CHATGPT_SELECTORS.composer, selector)) {
+            return [composer];
+          }
+
+          if (includesSelector(CHATGPT_SELECTORS.sendButton, selector)) {
+            return [sendButton];
+          }
+
+          return [];
+        }) as unknown as ParentNode["querySelectorAll"],
+      },
+      async () => undefined,
+    );
+
+    await expect(adapter.send("Queued message")).resolves.toBe("staged");
+    expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
+    expect("value" in composer && composer.value).toBe("Queued message");
   });
 
   it("defers queued sending when the user has a draft", async () => {

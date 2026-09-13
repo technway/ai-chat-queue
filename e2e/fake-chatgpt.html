@@ -143,6 +143,10 @@
           return;
         }
 
+        if (sendButton.dataset.ignoreClicks === "true") {
+          return;
+        }
+
         const message = document.createElement("li");
         message.textContent = content;
         sentMessages.append(message);
