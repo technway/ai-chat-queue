@@ -25,6 +25,56 @@ const STATUS_LABELS = {
   failed: "Needs attention",
 } as const;
 
+function captureItemPositions(list: HTMLElement): Map<string, number> {
+  const positions = new Map<string, number>();
+
+  for (const element of list.querySelectorAll<HTMLElement>(
+    ":scope > [data-queue-item-id]",
+  )) {
+    const id = element.dataset.queueItemId;
+    if (id) positions.set(id, element.getBoundingClientRect().top);
+  }
+
+  return positions;
+}
+
+function animateItemReorder(
+  list: HTMLElement,
+  previousPositions: ReadonlyMap<string, number>,
+): void {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return;
+  }
+
+  for (const element of list.querySelectorAll<HTMLElement>(
+    ":scope > [data-queue-item-id]",
+  )) {
+    const id = element.dataset.queueItemId;
+    const previousTop = id ? previousPositions.get(id) : undefined;
+
+    if (previousTop === undefined) {
+      continue;
+    }
+
+    const deltaY = previousTop - element.getBoundingClientRect().top;
+
+    if (Math.abs(deltaY) < 1) {
+      continue;
+    }
+
+    element.animate(
+      [
+        { transform: `translate3d(0, ${deltaY}px, 0)` },
+        { transform: "translate3d(0, 0, 0)" },
+      ],
+      {
+        duration: 240,
+        easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+      },
+    );
+  }
+}
+
 export interface QueueItemProps {
   readonly item: QueueItemData;
   readonly position: number;
@@ -69,6 +119,7 @@ export function QueueItem({
   const accessibleContent = isEditing ? draft : item.content;
   const itemHelpId = `queue-item-help-${position}`;
   const editorErrorId = `queue-item-editor-error-${position}`;
+  const isDraggable = canDrag && !isEditing && !isExiting;
 
   const startEditing = () => {
     setDraft(item.content);
@@ -96,14 +147,25 @@ export function QueueItem({
     onEditCancel();
   };
 
-  const handleDragStart = (event: DragEvent<HTMLButtonElement>) => {
-    if (!canDrag || isEditing) {
+  const handleDragStart = (event: DragEvent<HTMLLIElement>) => {
+    const target = event.target as Element;
+    const interactiveTarget = target.closest(
+      "button:not([data-drag-handle]), textarea, input, a, [contenteditable='true']",
+    );
+
+    if (!isDraggable || interactiveTarget) {
       event.preventDefault();
       return;
     }
 
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", item.id);
+    const bounds = event.currentTarget.getBoundingClientRect();
+    event.dataTransfer.setDragImage(
+      event.currentTarget,
+      event.clientX - bounds.left,
+      event.clientY - bounds.top,
+    );
     setIsDragging(true);
   };
 
@@ -113,16 +175,25 @@ export function QueueItem({
   };
 
   const handleDragOver = (event: DragEvent<HTMLLIElement>) => {
-    if (!canDrag || isEditing) {
+    if (!isDraggable) {
       return;
     }
 
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
-    setIsDragOver(true);
+    setIsDragOver(event.dataTransfer.getData("text/plain") !== item.id);
   };
 
-  const handleDragLeave = () => {
+  const handleDragLeave = (event: DragEvent<HTMLLIElement>) => {
+    const nextTarget = event.relatedTarget;
+
+    if (
+      nextTarget instanceof Node &&
+      event.currentTarget.contains(nextTarget)
+    ) {
+      return;
+    }
+
     setIsDragOver(false);
   };
 
@@ -131,16 +202,35 @@ export function QueueItem({
     setIsDragOver(false);
 
     const sourceId = event.dataTransfer.getData("text/plain");
+    const list = event.currentTarget.parentElement;
+    const previousPositions = list ? captureItemPositions(list) : undefined;
+    const listRoot = list?.getRootNode() as Document | ShadowRoot | undefined;
 
-    if (sourceId) {
+    if (sourceId && sourceId !== item.id) {
       onDropItem(sourceId, item.id);
+
+      if (list && previousPositions) {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            const activeList = list.isConnected
+              ? list
+              : listRoot?.querySelector<HTMLElement>("#queue-message-list");
+
+            if (activeList) {
+              animateItemReorder(activeList, previousPositions);
+            }
+          });
+        });
+      }
     }
   };
 
   return (
     <li
-      className={`group/item grid min-h-9 grid-cols-[18px_minmax(0,1fr)_auto_auto] items-center gap-1.5 border-transparent px-1 py-0.5 motion-safe:animate-queue-item-in transition-colors duration-150 not-first:border-t not-first:border-queue-border hover:bg-queue-surface-muted/60 data-[dragging]:opacity-40 data-[drag-over]:bg-queue-surface-muted max-[560px]:grid-cols-[18px_minmax(0,1fr)_auto]${isExiting ? " pointer-events-none overflow-hidden motion-safe:animate-queue-item-out" : ""}`}
+      className={`group/item relative grid min-h-9 grid-cols-[18px_minmax(0,1fr)_auto_auto] items-center gap-1.5 rounded-lg border-transparent px-1 py-0.5 select-none motion-safe:animate-queue-item-in transition-[background-color,box-shadow,opacity,transform] duration-200 ease-out not-first:border-t not-first:border-queue-border hover:z-10 hover:bg-queue-surface-muted hover:shadow-[inset_0_0_0_1px_var(--queue-border),0_3px_12px_rgb(0_0_0_/_12%)] data-[can-drag]:cursor-grab data-[dragging]:z-20 data-[dragging]:scale-[0.985] data-[dragging]:cursor-grabbing data-[dragging]:bg-queue-surface-muted data-[dragging]:opacity-55 data-[dragging]:shadow-[inset_0_0_0_1px_var(--queue-accent),0_8px_24px_rgb(0_0_0_/_24%)] data-[drag-over]:z-10 data-[drag-over]:bg-queue-surface-muted data-[drag-over]:shadow-[inset_0_0_0_1px_var(--queue-accent)] max-[560px]:grid-cols-[18px_minmax(0,1fr)_auto]${isExiting ? " pointer-events-none overflow-hidden motion-safe:animate-queue-item-out" : ""}`}
       data-testid="queue-item"
+      data-queue-item-id={item.id}
+      data-can-drag={isDraggable || undefined}
       data-editing={isEditing || undefined}
       data-dragging={isDragging || undefined}
       data-drag-over={isDragOver || undefined}
@@ -151,21 +241,22 @@ export function QueueItem({
       aria-describedby={itemHelpId}
       aria-posinset={position}
       aria-setsize={total}
+      draggable={isDraggable}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       <QueueIconButton
-        className="active:cursor-grabbing"
+        className="active:cursor-grabbing group-hover/item:bg-queue-surface-muted group-hover/item:text-queue-text"
         cursor="grab"
         size="compact"
         type="button"
-        draggable={canDrag && !isEditing}
-        disabled={!canDrag || isEditing}
+        data-drag-handle
+        disabled={!isDraggable}
         aria-label={`Drag queued message ${position} to reorder`}
         title="Drag to reorder"
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
       >
         <GripVertical {...iconProps} />
       </QueueIconButton>

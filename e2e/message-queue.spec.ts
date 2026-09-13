@@ -115,16 +115,51 @@ test("reorders queued messages with drag and drop", async ({ page }) => {
   await queueMessage(page, "Second queued");
   await queueMessage(page, "Third queued");
 
-  await queueItems(page)
-    .filter({ hasText: "Third queued" })
-    .getByRole("button", { name: "Drag queued message 3 to reorder" })
-    .dragTo(queueItems(page).filter({ hasText: "First queued" }));
+  const firstItem = queueItems(page).filter({ hasText: "First queued" });
+  const thirdItem = queueItems(page).filter({ hasText: "Third queued" });
+  const restingBackground = await firstItem.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+
+  await firstItem.hover();
+  await expect
+    .poll(() =>
+      firstItem.evaluate(
+        (element) => getComputedStyle(element).backgroundColor,
+      ),
+    )
+    .not.toBe(restingBackground);
+
+  await expect(thirdItem).toHaveAttribute("draggable", "true");
+  await thirdItem.dragTo(firstItem);
 
   await expect(queueItems(page).getByTestId("queue-item-preview")).toHaveText([
     "Third queued",
     "First queued",
     "Second queued",
   ]);
+  expect(
+    await page.evaluate(
+      () => matchMedia("(prefers-reduced-motion: reduce)").matches,
+    ),
+  ).toBe(false);
+  await expect
+    .poll(
+      () =>
+        queueItems(page).evaluateAll((items) =>
+          items.reduce(
+            (count, item) =>
+              count +
+              item
+                .getAnimations()
+                .filter((animation) => animation.playState === "running")
+                .length,
+            0,
+          ),
+        ),
+      { intervals: [0, 20, 50], timeout: 1_000 },
+    )
+    .toBeGreaterThan(0);
 });
 
 test("edits a queued message and pauses at its position", async ({ page }) => {
