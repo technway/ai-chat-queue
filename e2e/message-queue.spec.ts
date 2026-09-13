@@ -453,7 +453,7 @@ test("queues a draft during a tool approval and sends it after completion", asyn
   await expect(queuePanel(page)).toHaveCount(0);
 });
 
-test("keeps the Queue button above narrow composers and beside roomy ones", async ({
+test("keeps the Queue button above narrow composers and bottom-aligned beside roomy ones", async ({
   page,
 }) => {
   await openFakeChatGpt(page);
@@ -468,6 +468,31 @@ test("keeps the Queue button above narrow composers and beside roomy ones", asyn
   const composer = page.locator("#composer-container");
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(host).toHaveAttribute("data-placement", "beside");
+  const wideButtonBounds = await button.boundingBox();
+  const wideComposerBounds = await composer.boundingBox();
+  if (!wideButtonBounds || !wideComposerBounds)
+    throw new Error("Missing wide button or composer bounds");
+  expect(wideButtonBounds.y + wideButtonBounds.height).toBeCloseTo(
+    wideComposerBounds.y + wideComposerBounds.height - 8,
+    0,
+  );
+
+  await composer.evaluate((element) => {
+    (element as HTMLElement).style.minHeight = "220px";
+  });
+  await expect
+    .poll(async () => {
+      const buttonBounds = await button.boundingBox();
+      const composerBounds = await composer.boundingBox();
+      if (!buttonBounds || !composerBounds) return undefined;
+      return (
+        composerBounds.y +
+        composerBounds.height -
+        (buttonBounds.y + buttonBounds.height)
+      );
+    })
+    .toBeCloseTo(8, 0);
+
   await page.setViewportSize({ width: 375, height: 800 });
   await expect(host).toHaveAttribute("data-placement", "above");
   const buttonBounds = await button.boundingBox();

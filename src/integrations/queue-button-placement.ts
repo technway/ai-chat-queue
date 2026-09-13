@@ -1,6 +1,7 @@
 const BUTTON_WIDTH = 108;
 const BUTTON_HEIGHT = 36;
 const GAP = 12;
+const BOTTOM_INSET = 8;
 
 /** Keep extension controls outside the provider's React-owned send controls. */
 export function placeQueueButton(anchor: Element, shadowHost: Element): void {
@@ -28,7 +29,7 @@ export function placeQueueButton(anchor: Element, shadowHost: Element): void {
     "padding-bottom": beside ? "0" : "8px",
     left: beside ? `${bounds.right + GAP}px` : "auto",
     top: beside
-      ? `${bounds.top + (bounds.height - BUTTON_HEIGHT) / 2}px`
+      ? `${Math.max(bounds.top, bounds.bottom - BUTTON_HEIGHT - BOTTOM_INSET)}px`
       : "auto",
     "z-index": beside ? "51" : "auto",
   };
