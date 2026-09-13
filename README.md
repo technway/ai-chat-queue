@@ -17,7 +17,7 @@
 
 ## What it solves
 
-ChatGPT normally accepts one message while a response is generating. This extension adds a **Queue** button and a <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> shortcut so you can stage any follow-up draft, even while a turn is still active (for example during a tool approval). It displays the pending messages beside the composer and sends them one at a time as each response finishes.
+ChatGPT normally accepts one message while a response is generating. This extension adds a **Queue** button and keyboard shortcuts: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on macOS, or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on Windows and Linuxو so you can stage any follow-up draft, even while a turn is still active (for example during a tool approval). It displays the pending messages beside the composer and sends them one at a time as each response finishes.
 
 ## Installation
 
@@ -41,7 +41,7 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 ## Usage
 
 1. Open ChatGPT and start a conversation.
-2. Type a message, then use the **Queue** button or <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> to stage it. Normal <kbd>Enter</kbd> keeps ChatGPT's native behavior untouched, so the shortcut never fights the explicit queue action.
+2. Type a message, then use the **Queue** button or press <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on macOS, or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on Windows and Linux. Normal <kbd>Enter</kbd> keeps ChatGPT's native behavior untouched.
 3. Your message waits in the queue, then sends automatically when ChatGPT is ready.
 
 > [!NOTE]
@@ -49,7 +49,7 @@ Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**,
 
 ## How queueing works
 
-1. Queueing is always explicit: the **Queue** button or the <kbd>⌘/Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd> shortcut stages the current composer draft. It never depends on the send-button or generation state, so it works while ChatGPT is idle, generating, unavailable, or waiting for a tool approval.
+1. Queueing is always explicit: use the **Queue** button, <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on macOS, or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on Windows and Linux. It never depends on the send-button or generation state, so it works while ChatGPT is idle, generating, unavailable, or waiting for a tool approval.
 2. Normal <kbd>Enter</kbd> is left completely native: ChatGPT decides what to do with it, including its own "Follow up" behavior.
 3. The queue drainer watches generation state. When a turn truly finishes, the next message is placed in the composer and submitted automatically. Messages are never sent merely because the send button happens to be enabled mid-turn.
 4. Pending messages can be moved up or down before they are sent.
@@ -66,7 +66,7 @@ flowchart TD
     Content --> Registry["Provider registry"]
     Registry --> ChatGPT["ChatGPT provider<br/>adapters + selectors"]
 
-    Content --> QueueAction["Explicit queue action<br/>Queue button + ⌘/Ctrl+Shift+Enter"]
+    Content --> QueueAction["Explicit queue action<br/>Queue button + keyboard shortcuts"]
     QueueAction --> QueueService["QueueService"]
     QueueService --> QueueDrainer["QueueDrainer"]
     QueueDrainer --> GenerationState["Generation-state observer"]

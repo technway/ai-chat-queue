@@ -2,6 +2,25 @@ import { ArrowUpRight, Star } from "lucide-react";
 import logoUrl from "../../assets/logo.png";
 
 const repositoryUrl = "https://github.com/technway/ai-chat-queue";
+const keycapClassName =
+  "rounded-md border border-popup-border bg-white px-1.5 py-0.5 font-mono text-[11px] leading-none text-popup-kbd-text shadow-popup-key";
+
+function ShortcutKeys({ commandKey }: { readonly commandKey: string }) {
+  const label = `${commandKey === "⌘" ? "Command" : "Control"} plus Shift plus Enter`;
+
+  return (
+    <span className="inline-flex items-center gap-1 whitespace-nowrap">
+      <span className="sr-only">{label}</span>
+      <span className="contents" aria-hidden="true">
+        <kbd className={keycapClassName}>{commandKey}</kbd>
+        <span>+</span>
+        <kbd className={keycapClassName}>Shift</kbd>
+        <span>+</span>
+        <kbd className={keycapClassName}>Enter</kbd>
+      </span>
+    </span>
+  );
+}
 
 function App() {
   return (
@@ -23,7 +42,7 @@ function App() {
         <h2 className="m-0 text-[23px] font-bold leading-[1.12] tracking-[-.04em]">
           Queue the next steps
           <br />
-          while ChatGPT is still
+          while your AI chat is
           <br />
           working.
         </h2>
@@ -32,7 +51,7 @@ function App() {
             <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
               1
             </span>
-            <span>Open ChatGPT and start a conversation.</span>
+            <span>Open an AI chat and start a conversation.</span>
           </li>
           <li className="flex items-start gap-2.5">
             <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
@@ -41,11 +60,12 @@ function App() {
             <span>
               Use the{" "}
               <strong className="font-semibold text-popup-subtle">Queue</strong>{" "}
-              button or{" "}
-              <kbd className="rounded-md border border-popup-border bg-white px-1.5 py-0.5 font-mono text-[11px] text-popup-kbd-text shadow-popup-key">
-                ⌘/Ctrl+Shift+Enter
-              </kbd>{" "}
-              to queue the current draft.
+              button or the keyboard shortcut to queue the current draft.
+              <span className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1.5">
+                <ShortcutKeys commandKey="⌘" />
+                <span className="text-[11px]">or</span>
+                <ShortcutKeys commandKey="Ctrl" />
+              </span>
             </span>
           </li>
           <li className="flex items-start gap-2.5">
