@@ -21,6 +21,9 @@
       <button type="button" data-testid="fake-start-generating">
         Start generating
       </button>
+      <button type="button" data-testid="fake-start-pending">
+        Start pending request
+      </button>
       <button type="button" data-testid="fake-finish-generating" disabled>
         Finish generating
       </button>
@@ -72,6 +75,9 @@
       const stopButton = document.querySelector("#stop-button");
       const stateLabel = document.querySelector("[data-testid=\"generation-state\"]");
       const startButton = document.querySelector("[data-testid=\"fake-start-generating\"]");
+      const startPendingButton = document.querySelector(
+        "[data-testid=\"fake-start-pending\"]",
+      );
       const finishButton = document.querySelector("[data-testid=\"fake-finish-generating\"]");
       const requestApprovalButton = document.querySelector(
         "[data-testid=\"fake-request-approval\"]",
@@ -158,6 +164,7 @@
       sendButton.addEventListener("click", sendMessage);
       stopButton.addEventListener("click", finishGeneration);
       startButton.addEventListener("click", () => setState("generating"));
+      startPendingButton.addEventListener("click", () => setState("pending"));
       finishButton.addEventListener("click", finishGeneration);
       requestApprovalButton.addEventListener("click", () => setState("awaiting"));
       approveButton.addEventListener("click", approveTool);

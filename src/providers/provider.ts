@@ -46,5 +46,6 @@ export interface Provider {
   createComposer(root: Document): ProviderComposerAdapter;
   getQueueScope(url: URL, root: Document): string;
   isPersistentQueueScope(scope: string): boolean;
+  isQueueScopePromotion?(currentScope: string, nextScope: string): boolean;
   getTheme(root: Document): ProviderTheme | undefined;
 }

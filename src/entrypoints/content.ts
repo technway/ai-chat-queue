@@ -6,7 +6,7 @@ import { QueuePanel } from "../components/queue/QueuePanel";
 import "../styles/tailwind.css";
 import { QueueActionIntegration } from "../integrations/queue-action";
 import { placeQueueButton } from "../integrations/queue-button-placement";
-import type { Provider } from "../providers/provider";
+import type { GenerationState, Provider } from "../providers/provider";
 import { providerRegistry } from "../providers/registry";
 import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
@@ -66,6 +66,12 @@ function getCurrentQueueScope(provider: Provider): string {
   return provider.getQueueScope(new URL(location.href), document);
 }
 
+function isUnfinishedTurn(state: GenerationState): boolean {
+  return (
+    state === "generating" || state === "awaiting" || state === "unavailable"
+  );
+}
+
 export default defineContentScript({
   matches: providerRegistry.urlPatterns,
   cssInjectionMode: "ui",
@@ -109,6 +115,7 @@ export default defineContentScript({
     let requestConversationSwitch: (scope: string) => void = () => {};
     let draftBlocked = false;
     let stagedComposerContent: string | null = null;
+    let observedUnfinishedTurn = false;
 
     const stopStorageSubscription = queue.subscribe((event) => {
       const currentScope = getCurrentQueueScope(provider);
@@ -140,11 +147,18 @@ export default defineContentScript({
 
     const switchConversation = async (targetScope: string) => {
       const previousStorage = queueStorage;
+      const previousState = queue.getState();
       const previousItemIds = new Set(
-        queue.getState().items.map((item) => item.id),
+        previousState.items.map((item) => item.id),
       );
+      const previousSettings = settings;
+      const previousPreferences = preferences;
+      const migrateExistingQueue =
+        provider.isQueueScopePromotion?.(queueScope, targetScope) === true &&
+        (observedUnfinishedTurn ||
+          isUnfinishedTurn(generationState.getState()));
 
-      previousStorage.save(queue.getState(), settings, preferences);
+      previousStorage.save(previousState, settings, preferences);
       await previousStorage.flush();
 
       const nextStorage = createQueueStorageForScope(
@@ -161,27 +175,42 @@ export default defineContentScript({
         return;
       }
 
-      // Inputs queued during navigation belong to the newly opened chat.
+      // Inputs queued during navigation belong to the newly opened chat. If
+      // ChatGPT has just assigned an ID to the active new chat, the messages
+      // queued before that URL change belong to it as well.
       const restoredIds = new Set(nextSnapshot.items.map((item) => item.id));
-      const newlyQueuedItems = queue
+      const carriedItems = queue
         .getState()
         .items.filter(
-          (item) => !previousItemIds.has(item.id) && !restoredIds.has(item.id),
+          (item) =>
+            !restoredIds.has(item.id) &&
+            (migrateExistingQueue || !previousItemIds.has(item.id)),
         );
 
-      stagedComposerContent = null;
+      if (!migrateExistingQueue) {
+        stagedComposerContent = null;
+      }
       queueScope = targetScope;
       queueStorage = nextStorage;
-      preferences = nextSnapshot.preferences;
-      settings = {
-        ...nextSnapshot.settings,
-        paused: nextSnapshot.items.length > 0 || nextSnapshot.settings.paused,
-      };
+      preferences = migrateExistingQueue
+        ? previousPreferences
+        : nextSnapshot.preferences;
+      settings = migrateExistingQueue
+        ? {
+            ...previousSettings,
+            paused: previousSettings.paused || nextSnapshot.items.length > 0,
+          }
+        : {
+            ...nextSnapshot.settings,
+            paused:
+              nextSnapshot.items.length > 0 || nextSnapshot.settings.paused,
+          };
+      observedUnfinishedTurn = false;
 
       drainer.reset(settings.paused || draftBlocked);
 
       switchingConversation = false;
-      queue.replace([...nextSnapshot.items, ...newlyQueuedItems]);
+      queue.replace([...nextSnapshot.items, ...carriedItems]);
       refreshQueueUi();
       console.log("[ai-chat-queue] queue conversation changed", {
         count: queue.getState().total,
@@ -276,6 +305,10 @@ export default defineContentScript({
       // was missed and is only reported as unavailable.
       const stateWhenQueued = generationState.getState();
 
+      if (isUnfinishedTurn(stateWhenQueued)) {
+        observedUnfinishedTurn = true;
+      }
+
       // Wait until the queue action clears the submitted draft from the
       // composer so the draft guard can release it.
       queueMicrotask(() => {
@@ -308,6 +341,7 @@ export default defineContentScript({
       console.log("[ai-chat-queue] ChatGPT state changed", { state });
 
       if (state === "generating" || state === "awaiting") {
+        observedUnfinishedTurn = true;
         if (isCurrentConversation() && settings.autoSend && !isQueuePaused()) {
           drainer.markGenerating();
         }

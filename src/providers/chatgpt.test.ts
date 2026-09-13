@@ -90,4 +90,34 @@ describe("ChatGPT provider", () => {
     lightDocument.documentElement.dataset.theme = "light";
     expect(chatGptProvider.getTheme(lightDocument)).toBe("light");
   });
+
+  it("recognizes newly assigned conversation scopes", () => {
+    expect(
+      chatGptProvider.isQueueScopePromotion?.("page:/", "conversation:chat-1"),
+    ).toBe(true);
+    expect(
+      chatGptProvider.isQueueScopePromotion?.(
+        "temporary:/",
+        "temporary:chat-2",
+      ),
+    ).toBe(true);
+    expect(
+      chatGptProvider.isQueueScopePromotion?.(
+        "unauthenticated:/",
+        "unauthenticated:chat-3",
+      ),
+    ).toBe(true);
+    expect(
+      chatGptProvider.isQueueScopePromotion?.(
+        "conversation:chat-1",
+        "conversation:chat-2",
+      ),
+    ).toBe(false);
+    expect(
+      chatGptProvider.isQueueScopePromotion?.(
+        "temporary:chat-1",
+        "temporary:chat-2",
+      ),
+    ).toBe(false);
+  });
 });

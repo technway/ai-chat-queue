@@ -30,13 +30,16 @@ export const test = base.extend<{ context: BrowserContext }>({
 
 export const expect = test.expect;
 
-export async function openFakeChatGpt(page: Page): Promise<void> {
+export async function openFakeChatGpt(
+  page: Page,
+  url = "https://chatgpt.com/c/e2e-test",
+): Promise<void> {
   await page.route("https://chatgpt.com/**", (route) =>
     route.fulfill({
       path: fakeChatGptPagePath,
       contentType: "text/html",
     }),
   );
-  await page.goto("https://chatgpt.com/c/e2e-test");
+  await page.goto(url);
   await expect(page.getByTestId("prompt-textarea")).toBeVisible();
 }

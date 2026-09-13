@@ -77,6 +77,25 @@ function getQueueScope(url: URL, root: Document): string {
   return `page:${normalizedPath}`;
 }
 
+function isQueueScopePromotion(
+  currentScope: string,
+  nextScope: string,
+): boolean {
+  const changesFromRouteToAssignedId = (
+    currentKind: string,
+    nextKind: string,
+  ) =>
+    currentScope.startsWith(`${currentKind}:/`) &&
+    nextScope.startsWith(`${nextKind}:`) &&
+    !nextScope.startsWith(`${nextKind}:/`);
+
+  return (
+    changesFromRouteToAssignedId("page", "conversation") ||
+    changesFromRouteToAssignedId("temporary", "temporary") ||
+    changesFromRouteToAssignedId("unauthenticated", "unauthenticated")
+  );
+}
+
 function getTheme(root: Document) {
   const element = root.documentElement;
   const dataTheme = element.dataset.theme;
@@ -117,5 +136,6 @@ export const chatGptProvider: Provider = {
   isPersistentQueueScope(scope) {
     return scope.startsWith("conversation:");
   },
+  isQueueScopePromotion,
   getTheme,
 };
