@@ -9,21 +9,23 @@
   --color-queue-text-muted: var(--queue-text-muted);
   --color-queue-border: var(--queue-border);
   --color-queue-accent: var(--queue-accent);
-  --color-queue-danger: #d33a2c;
-  --color-popup-surface: #f7f7f8;
-  --color-popup-text: #202123;
-  --color-popup-border: #d4d4d8;
-  --color-popup-muted: #71717a;
-  --color-popup-subtle: #52525b;
-  --color-popup-kbd-text: #27272a;
-  --color-popup-button: #202123;
-  --color-popup-button-hover: #2f2f2f;
-  --color-popup-accent: #10a37f;
-  --color-popup-star: #f5c451;
-  --color-popup-star-border: #d4a72c;
-  --color-popup-icon: #a1a1aa;
+  --color-queue-danger: var(--queue-danger);
+  --color-popup-surface: var(--popup-surface);
+  --color-popup-text: var(--popup-text);
+  --color-popup-border: var(--popup-border);
+  --color-popup-muted: var(--popup-muted);
+  --color-popup-subtle: var(--popup-subtle);
+  --color-popup-kbd-text: var(--popup-kbd-text);
+  --color-popup-key: var(--popup-key);
+  --color-popup-button: var(--popup-button);
+  --color-popup-button-text: var(--popup-button-text);
+  --color-popup-button-hover: var(--popup-button-hover);
+  --color-popup-accent: var(--popup-accent);
+  --color-popup-star: var(--popup-star);
+  --color-popup-star-border: var(--popup-star-border);
+  --color-popup-icon: var(--popup-icon);
   --shadow-queue: var(--queue-shadow);
-  --shadow-popup-key: 0 1px 0 #a1a1aa;
+  --shadow-popup-key: 0 1px 0 #a1a1a1;
   --shadow-popup-button: 0 4px 14px rgb(0 0 0 / 18%);
   --shadow-popup-button-hover: 0 7px 18px rgb(0 0 0 / 24%);
   --animate-queue-item-in: queue-item-in 240ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -60,16 +62,55 @@
 }
 
 @layer base {
+  .popup-root {
+    --popup-surface: #f7f7f7;
+    --popup-text: #202020;
+    --popup-border: #d4d4d4;
+    --popup-muted: #717171;
+    --popup-subtle: #525252;
+    --popup-kbd-text: #272727;
+    --popup-key: #ffffff;
+    --popup-button: #202020;
+    --popup-button-text: #ffffff;
+    --popup-button-hover: #2f2f2f;
+    --popup-accent: #525252;
+    --popup-star: #d4d4d4;
+    --popup-star-border: #8a8a8a;
+    --popup-icon: #a1a1a1;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .popup-root {
+      --popup-surface: #171717;
+      --popup-text: #f5f5f5;
+      --popup-border: #3f3f3f;
+      --popup-muted: #a3a3a3;
+      --popup-subtle: #d4d4d4;
+      --popup-kbd-text: #e5e5e5;
+      --popup-key: #262626;
+      --popup-button: #f5f5f5;
+      --popup-button-text: #171717;
+      --popup-button-hover: #d4d4d4;
+      --popup-accent: #d4d4d4;
+      --popup-star: #737373;
+      --popup-star-border: #a3a3a3;
+      --popup-icon: #525252;
+      color-scheme: dark;
+    }
+  }
+
   :host {
     --queue-draft-background: #fff;
     --queue-draft-foreground: #000;
     --queue-surface: #171717;
     --queue-surface-muted: #262626;
     --queue-text: #f5f5f5;
-    --queue-text-muted: #a1a1aa;
+    --queue-text-muted: #a1a1a1;
     --queue-border: rgb(255 255 255 / 14%);
-    --queue-accent: #19c37d;
-    --queue-accent-hover: #21d18a;
+    --queue-accent: #d4d4d4;
+    --queue-accent-hover: #f5f5f5;
+    --queue-danger: #a3a3a3;
     --queue-shadow:
       0 2px 4px color-mix(in srgb, #000 10%, transparent),
       0 8px 20px color-mix(in srgb, #000 14%, transparent),
@@ -87,8 +128,9 @@
     --queue-text: #2f2f2f;
     --queue-text-muted: #6b6b6b;
     --queue-border: rgb(0 0 0 / 12%);
-    --queue-accent: #10a37f;
-    --queue-accent-hover: #0b8c6d;
+    --queue-accent: #404040;
+    --queue-accent-hover: #171717;
+    --queue-danger: #525252;
     --queue-shadow:
       0 2px 4px rgb(0 0 0 / 8%), 0 8px 20px rgb(0 0 0 / 10%),
       0 20px 40px rgb(0 0 0 / 7%);
@@ -99,10 +141,11 @@
     --queue-surface: #171717;
     --queue-surface-muted: #262626;
     --queue-text: #f5f5f5;
-    --queue-text-muted: #a1a1aa;
+    --queue-text-muted: #a1a1a1;
     --queue-border: rgb(255 255 255 / 14%);
-    --queue-accent: #19c37d;
-    --queue-accent-hover: #21d18a;
+    --queue-accent: #d4d4d4;
+    --queue-accent-hover: #f5f5f5;
+    --queue-danger: #a3a3a3;
     --queue-shadow:
       0 2px 4px rgb(0 0 0 / 24%), 0 8px 20px rgb(0 0 0 / 30%),
       0 20px 40px rgb(0 0 0 / 22%);

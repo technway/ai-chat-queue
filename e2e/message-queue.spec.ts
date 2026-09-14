@@ -8,6 +8,17 @@ function queueItems(page: Parameters<typeof openFakeChatGpt>[0]) {
   return queuePanel(page).getByTestId("queue-item");
 }
 
+function expectGrayscale(color: string): void {
+  const channels = color
+    .match(/[\d.]+/g)
+    ?.slice(0, 3)
+    .map(Number);
+
+  expect(channels, color).toHaveLength(3);
+  expect(channels?.[0], color).toBe(channels?.[1]);
+  expect(channels?.[1], color).toBe(channels?.[2]);
+}
+
 async function startGenerating(page: Parameters<typeof openFakeChatGpt>[0]) {
   await page.getByTestId("fake-start-generating").click();
   await expect(page.getByTestId("generation-state")).toHaveText("generating");
@@ -81,6 +92,49 @@ test("sends multiple queued messages in order", async ({ page }) => {
     "Third queued",
   ]);
   await expect(queuePanel(page)).toHaveCount(0);
+});
+
+test("uses independent straight dividers and grayscale queue themes", async ({
+  page,
+}) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await queueMessage(page, "First queued");
+  await queueMessage(page, "Second queued");
+  await queueMessage(page, "Third queued");
+
+  const dividers = page.getByTestId("queue-divider");
+  await expect(dividers).toHaveCount(2);
+  expect(
+    await dividers.evaluateAll((elements) =>
+      elements.map((element) => getComputedStyle(element).borderRadius),
+    ),
+  ).toEqual(["0px", "0px"]);
+
+  for (const theme of ["light", "dark"] as const) {
+    await page.locator("html").evaluate((element, value) => {
+      element.dataset.theme = value;
+    }, theme);
+
+    const host = page.locator("ai-chat-queue");
+    await expect(host).toHaveAttribute("data-theme", theme);
+
+    const colors = await queuePanel(page).evaluate((panel) => {
+      const divider = panel.querySelector('[data-testid="queue-divider"]');
+      const item = panel.querySelector('[data-testid="queue-item"]');
+
+      return [
+        getComputedStyle(panel).backgroundColor,
+        getComputedStyle(panel).color,
+        divider ? getComputedStyle(divider).backgroundColor : "",
+        item ? getComputedStyle(item).color : "",
+      ];
+    });
+
+    for (const color of colors) {
+      expectGrayscale(color);
+    }
+  }
 });
 
 test("reorders queued messages before sending", async ({ page }) => {

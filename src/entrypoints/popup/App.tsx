@@ -3,7 +3,7 @@ import logoUrl from "../../assets/logo.png";
 
 const repositoryUrl = "https://github.com/technway/ai-chat-queue";
 const keycapClassName =
-  "rounded-md border border-popup-border bg-white px-1.5 py-0.5 font-mono text-[11px] leading-none text-popup-kbd-text shadow-popup-key";
+  "rounded-md border border-popup-border bg-popup-key px-1.5 py-0.5 font-mono text-[11px] leading-none text-popup-kbd-text shadow-popup-key";
 
 function ShortcutKeys({ commandKey }: { readonly commandKey: string }) {
   const label = `${commandKey === "⌘" ? "Command" : "Control"} plus Shift plus Enter`;
@@ -24,7 +24,7 @@ function ShortcutKeys({ commandKey }: { readonly commandKey: string }) {
 
 function App() {
   return (
-    <main className="flex min-h-75 flex-col overflow-hidden bg-popup-surface p-8! text-popup-text">
+    <main className="popup-root flex min-h-75 flex-col overflow-hidden bg-popup-surface p-8! text-popup-text">
       <header className="flex items-center gap-3">
         <img
           className="size-11 shrink-0 rounded-full border border-popup-border object-contain"
@@ -48,13 +48,13 @@ function App() {
         </h2>
         <ol className="m-0 mt-4 grid list-none gap-2.5 p-0 text-[13px] leading-[1.4] text-popup-muted">
           <li className="flex items-start gap-2.5">
-            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-popup-button-text">
               1
             </span>
             <span>Open an AI chat and start a conversation.</span>
           </li>
           <li className="flex items-start gap-2.5">
-            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-popup-button-text">
               2
             </span>
             <span>
@@ -69,7 +69,7 @@ function App() {
             </span>
           </li>
           <li className="flex items-start gap-2.5">
-            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-white">
+            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-popup-button text-[11px] font-bold text-popup-button-text">
               3
             </span>
             <span>Your message waits, then sends automatically.</span>
@@ -78,7 +78,7 @@ function App() {
       </section>
 
       <a
-        className="mt-4 inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-popup-button bg-popup-button px-4 text-[13px] font-semibold text-white no-underline shadow-popup-button transition duration-150 ease-out hover:-translate-y-px hover:bg-popup-button-hover hover:shadow-popup-button-hover focus-visible:outline-2 focus-visible:outline-popup-accent focus-visible:outline-offset-2"
+        className="mt-4 inline-flex min-h-10 cursor-pointer items-center justify-center gap-2 rounded-xl border border-popup-button bg-popup-button px-4 text-[13px] font-semibold text-popup-button-text no-underline shadow-popup-button transition duration-150 ease-out hover:-translate-y-px hover:bg-popup-button-hover hover:shadow-popup-button-hover focus-visible:outline-2 focus-visible:outline-popup-accent focus-visible:outline-offset-2"
         href={repositoryUrl}
         target="_blank"
         rel="noreferrer"

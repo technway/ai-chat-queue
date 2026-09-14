@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import type { QueueService } from "../../queue/queue.service";
 import type {
   QueueItem as QueueItemData,
@@ -187,41 +187,49 @@ export function QueuePanel({
         hidden={collapsed}
       >
         {items.map((item, index) => (
-          <QueueItem
-            key={item.id}
-            item={item}
-            position={index + 1}
-            total={items.length}
-            canMoveUp={
-              item.status !== "sending" &&
-              index > 0 &&
-              items[index - 1]?.status !== "sending"
-            }
-            canMoveDown={
-              item.status !== "sending" &&
-              index < items.length - 1 &&
-              items[index + 1]?.status !== "sending"
-            }
-            canEdit={
-              item.status !== "sending" &&
-              (editingId === null || editingId === item.id)
-            }
-            canDrag={item.status !== "sending" && editingId === null}
-            isEditing={editingId === item.id}
-            isExiting={exitingIds.has(item.id)}
-            onMove={(id, direction) => queue.move(id, direction)}
-            onDropItem={(id, targetId) => queue.moveBefore(id, targetId)}
-            onEditStart={(id) => {
-              setEditingId(id);
-              onEditingChange?.(id);
-            }}
-            onEditCancel={() => {
-              setEditingId(null);
-              onEditingChange?.(null);
-            }}
-            onEdit={(id, content) => queue.edit(id, content) !== undefined}
-            onRemove={(id) => queue.remove(id)}
-          />
+          <Fragment key={item.id}>
+            {index > 0 ? (
+              <li
+                className="h-px shrink-0 bg-queue-border"
+                data-testid="queue-divider"
+                aria-hidden="true"
+              />
+            ) : null}
+            <QueueItem
+              item={item}
+              position={index + 1}
+              total={items.length}
+              canMoveUp={
+                item.status !== "sending" &&
+                index > 0 &&
+                items[index - 1]?.status !== "sending"
+              }
+              canMoveDown={
+                item.status !== "sending" &&
+                index < items.length - 1 &&
+                items[index + 1]?.status !== "sending"
+              }
+              canEdit={
+                item.status !== "sending" &&
+                (editingId === null || editingId === item.id)
+              }
+              canDrag={item.status !== "sending" && editingId === null}
+              isEditing={editingId === item.id}
+              isExiting={exitingIds.has(item.id)}
+              onMove={(id, direction) => queue.move(id, direction)}
+              onDropItem={(id, targetId) => queue.moveBefore(id, targetId)}
+              onEditStart={(id) => {
+                setEditingId(id);
+                onEditingChange?.(id);
+              }}
+              onEditCancel={() => {
+                setEditingId(null);
+                onEditingChange?.(null);
+              }}
+              onEdit={(id, content) => queue.edit(id, content) !== undefined}
+              onRemove={(id) => queue.remove(id)}
+            />
+          </Fragment>
         ))}
       </ol>
     </section>

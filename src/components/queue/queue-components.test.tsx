@@ -77,6 +77,7 @@ describe("queue components", () => {
     expect(html).toContain('aria-label="Remove queued message 1"');
     expect(html).toContain('aria-label="Minimize queue"');
     expect(html).toContain('aria-expanded="true"');
+    expect(html.match(/data-testid="queue-divider"/g)).toHaveLength(1);
   });
 
   it("renders the supplied queue snapshot", () => {

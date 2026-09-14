@@ -3,6 +3,16 @@ import { describe, expect, it } from "vitest";
 import App from "./App";
 
 describe("popup shortcut", () => {
+  it("uses theme-aware popup colors", () => {
+    const html = renderToStaticMarkup(<App />);
+
+    expect(html).toContain("popup-root");
+    expect(html).toContain("bg-popup-key");
+    expect(html).toContain("text-popup-button-text");
+    expect(html).not.toContain("bg-white");
+    expect(html).not.toContain("text-white");
+  });
+
   it("uses provider-neutral product copy", () => {
     const html = renderToStaticMarkup(<App />);
 
