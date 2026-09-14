@@ -1,0 +1,54 @@
+version: 2
+updates:
+  # pnpm uses the "npm" ecosystem value
+  # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#package-ecosystem-
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Aden"
+    # combine compatible minor and patch updates
+    # while keeping major upgrades in separate PRs
+    # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#groups-
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      development-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#commit-message--
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+
+  # A root directory tells Dependabot to scan .github/workflows for actions.
+  # https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#directories-or-directory--
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Asia/Aden"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
