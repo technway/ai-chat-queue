@@ -96,9 +96,10 @@
       function updateComposerControls() {
         const hasContent = hasComposerContent();
         sendButton.hidden = !hasContent;
-        // During "awaiting" the current turn is still unfinished, but ChatGPT
-        // natively allows a follow-up send, so the send button stays enabled.
-        const canSendWhile = state === "available" || state === "awaiting";
+        // Pending requests and approvals can still expose an enabled send
+        // control before streaming begins.
+        const canSendWhile =
+          state === "available" || state === "awaiting" || state === "pending";
         sendButton.disabled = !canSendWhile || !hasContent;
       }
 
@@ -158,6 +159,13 @@
         sentMessages.append(message);
         composer.textContent = "";
         composer.dispatchEvent(new Event("input", { bubbles: true }));
+
+        if (sendButton.dataset.slowRequest === "true") {
+          delete sendButton.dataset.slowRequest;
+          setState("pending");
+          return;
+        }
+
         setState("generating", true);
       }
 

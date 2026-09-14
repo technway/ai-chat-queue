@@ -12,6 +12,7 @@ import { MessageQueue } from "../queue/queue";
 import { QueueService } from "../queue/queue.service";
 import type { QueueItem as QueueItemData } from "../queue/queue.types";
 import { QueueDrainer } from "../queue/queue-drainer";
+import { QueueScopeLineage } from "../queue/queue-scope-lineage";
 import { createQueueStorageForScope } from "../storage/queue-storage";
 
 function appendPanelHost(anchor: Element, shadowHost: Element): void {
@@ -115,7 +116,77 @@ export default defineContentScript({
     let requestConversationSwitch: (scope: string) => void = () => {};
     let draftBlocked = false;
     let stagedComposerContent: string | null = null;
-    let observedUnfinishedTurn = false;
+    const scopeLineage = new QueueScopeLineage({
+      isPromotion: (currentScope, nextScope) =>
+        provider.isQueueScopePromotion?.(currentScope, nextScope) === true,
+      isProvisional: (scope) =>
+        provider.isProvisionalQueueScope?.(scope) === true,
+    });
+
+    const markNativeTurnStart = () => {
+      if (composer.readMessage().trim().length > 0) {
+        scopeLineage.start(queueScope);
+      }
+    };
+
+    const onNativeSendClick = (event: MouseEvent) => {
+      if (event.isTrusted && composer.isSendButtonTarget(event.target)) {
+        markNativeTurnStart();
+      }
+    };
+
+    const onNativeSendKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.isTrusted &&
+        event.key === "Enter" &&
+        !event.shiftKey &&
+        !event.isComposing &&
+        composer.isComposerTarget(event.target)
+      ) {
+        markNativeTurnStart();
+      }
+    };
+
+    const onNavigationClick = (event: MouseEvent) => {
+      if (!event.isTrusted || !(event.target instanceof Element)) {
+        return;
+      }
+
+      const link = event.target.closest("a[href]");
+
+      if (link instanceof HTMLAnchorElement) {
+        const targetUrl = new URL(link.href, location.href);
+
+        if (provider.matches(targetUrl)) {
+          const targetScope = provider.getQueueScope(targetUrl, document);
+
+          if (targetScope !== getCurrentQueueScope(provider)) {
+            scopeLineage.markExplicitNavigation(targetScope);
+          }
+        }
+
+        return;
+      }
+
+      const control = event.target.closest("button[aria-label], button[title]");
+      const label =
+        control?.getAttribute("aria-label") ?? control?.getAttribute("title");
+
+      if (label?.toLowerCase().includes("new chat")) {
+        scopeLineage.markExplicitNavigation();
+      }
+    };
+
+    const onHistoryNavigation = () => {
+      scopeLineage.markExplicitNavigation();
+    };
+
+    // Capture the user's send before ChatGPT clears the composer or changes
+    // the URL. On slow requests, its DOM can still look idle at this point.
+    document.addEventListener("click", onNativeSendClick, true);
+    document.addEventListener("keydown", onNativeSendKeyDown, true);
+    document.addEventListener("click", onNavigationClick, true);
+    window.addEventListener("popstate", onHistoryNavigation);
 
     const stopStorageSubscription = queue.subscribe((event) => {
       const currentScope = getCurrentQueueScope(provider);
@@ -153,10 +224,15 @@ export default defineContentScript({
       );
       const previousSettings = settings;
       const previousPreferences = preferences;
-      const migrateExistingQueue =
-        provider.isQueueScopePromotion?.(queueScope, targetScope) === true &&
-        (observedUnfinishedTurn ||
-          isUnfinishedTurn(generationState.getState()));
+      const stateDuringSwitch = generationState.getState();
+      const scopeTransition = scopeLineage.decide({
+        currentScope: queueScope,
+        hasQueuedItems: previousState.total > 0,
+        nextScope: targetScope,
+        unfinishedTurn: isUnfinishedTurn(stateDuringSwitch),
+      });
+      const migrateExistingQueue = scopeTransition.migrate;
+      const continueMigratedQueue = scopeTransition.continueAutomatically;
 
       previousStorage.save(previousState, settings, preferences);
       await previousStorage.flush();
@@ -187,9 +263,10 @@ export default defineContentScript({
             (migrateExistingQueue || !previousItemIds.has(item.id)),
         );
 
-      if (!migrateExistingQueue) {
+      if (!continueMigratedQueue) {
         stagedComposerContent = null;
       }
+      scopeLineage.complete(queueScope, targetScope, scopeTransition);
       queueScope = targetScope;
       queueStorage = nextStorage;
       preferences = migrateExistingQueue
@@ -198,15 +275,18 @@ export default defineContentScript({
       settings = migrateExistingQueue
         ? {
             ...previousSettings,
-            paused: previousSettings.paused || nextSnapshot.items.length > 0,
+            // An uncertain lineage keeps its messages but requires an
+            // explicit resume before anything can be sent.
+            paused:
+              previousSettings.paused ||
+              nextSnapshot.items.length > 0 ||
+              !continueMigratedQueue,
           }
         : {
             ...nextSnapshot.settings,
             paused:
               nextSnapshot.items.length > 0 || nextSnapshot.settings.paused,
           };
-      observedUnfinishedTurn = false;
-
       drainer.reset(settings.paused || draftBlocked);
 
       switchingConversation = false;
@@ -305,10 +385,6 @@ export default defineContentScript({
       // was missed and is only reported as unavailable.
       const stateWhenQueued = generationState.getState();
 
-      if (isUnfinishedTurn(stateWhenQueued)) {
-        observedUnfinishedTurn = true;
-      }
-
       // Wait until the queue action clears the submitted draft from the
       // composer so the draft guard can release it.
       queueMicrotask(() => {
@@ -341,7 +417,7 @@ export default defineContentScript({
       console.log("[ai-chat-queue] ChatGPT state changed", { state });
 
       if (state === "generating" || state === "awaiting") {
-        observedUnfinishedTurn = true;
+        scopeLineage.observeUnfinishedTurn(queueScope);
         if (isCurrentConversation() && settings.autoSend && !isQueuePaused()) {
           drainer.markGenerating();
         }
@@ -590,6 +666,10 @@ export default defineContentScript({
       document.removeEventListener("input", onComposerInput, true);
       document.removeEventListener("change", onComposerInput, true);
       document.removeEventListener("compositionend", onComposerInput, true);
+      document.removeEventListener("click", onNativeSendClick, true);
+      document.removeEventListener("keydown", onNativeSendKeyDown, true);
+      document.removeEventListener("click", onNavigationClick, true);
+      window.removeEventListener("popstate", onHistoryNavigation);
       void queueStorage.flush();
     });
   },

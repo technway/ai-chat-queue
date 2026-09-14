@@ -119,5 +119,23 @@ describe("ChatGPT provider", () => {
         "temporary:chat-2",
       ),
     ).toBe(false);
+    expect(
+      chatGptProvider.isQueueScopePromotion?.(
+        "conversation:WEB:temporary-id",
+        "conversation:canonical-id",
+      ),
+    ).toBe(true);
+  });
+
+  it("recognizes provisional new-chat scopes", () => {
+    expect(chatGptProvider.isProvisionalQueueScope?.("page:/")).toBe(true);
+    expect(
+      chatGptProvider.isProvisionalQueueScope?.(
+        "conversation:WEB:temporary-id",
+      ),
+    ).toBe(true);
+    expect(
+      chatGptProvider.isProvisionalQueueScope?.("conversation:canonical-id"),
+    ).toBe(false);
   });
 });

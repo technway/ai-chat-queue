@@ -410,34 +410,109 @@ test("explicit queue while idle does not auto-send until a turn completes", asyn
   await expect(queuePanel(page)).toHaveCount(0);
 });
 
-test("keeps queued messages when a slow new chat receives its conversation ID", async ({
+test("keeps queued messages through provisional and canonical new-chat IDs", async ({
   page,
 }) => {
   await openFakeChatGpt(page, "https://chatgpt.com/");
-  await page.getByTestId("fake-start-pending").click();
+  await page.getByTestId("send-button").evaluate((button) => {
+    button.dataset.slowRequest = "true";
+  });
+  await page.getByTestId("prompt-textarea").fill("Original slow request");
+  await page.getByTestId("send-button").click();
   await expect(page.getByTestId("generation-state")).toHaveText("pending");
+
+  await page.evaluate(() => {
+    history.replaceState({}, "", "/c/WEB:temporary-conversation");
+    const routeMarker = document.createElement("div");
+    document.body.append(routeMarker);
+    routeMarker.remove();
+  });
+  await expect(page).toHaveURL(
+    "https://chatgpt.com/c/WEB:temporary-conversation",
+  );
 
   await queueMessage(page, "First message queued during the slow request");
   await queueMessage(page, "Second message queued during the slow request");
+  await queueMessage(page, "Third message queued during the slow request");
 
-  await page.evaluate(() => {
-    history.replaceState({}, "", "/c/delayed-conversation");
-  });
   await page.getByTestId("fake-start-generating").click();
 
-  await expect(page).toHaveURL("https://chatgpt.com/c/delayed-conversation");
+  await page.evaluate(() => {
+    history.replaceState({}, "", "/c/canonical-conversation");
+    const routeMarker = document.createElement("div");
+    document.body.append(routeMarker);
+    routeMarker.remove();
+  });
+
+  await expect(page).toHaveURL("https://chatgpt.com/c/canonical-conversation");
   await expect(queueItems(page).getByTestId("queue-item-preview")).toHaveText([
     "First message queued during the slow request",
     "Second message queued during the slow request",
+    "Third message queued during the slow request",
   ]);
 
   await page.getByTestId("fake-finish-generating").click();
 
   await expect(page.locator("#sent-messages li")).toHaveText([
+    "Original slow request",
     "First message queued during the slow request",
     "Second message queued during the slow request",
+    "Third message queued during the slow request",
   ]);
   await expect(queuePanel(page)).toHaveCount(0);
+});
+
+test("does not move a provisional queue when the user opens another chat", async ({
+  page,
+}) => {
+  await openFakeChatGpt(page, "https://chatgpt.com/");
+  await page.getByTestId("send-button").evaluate((button) => {
+    button.dataset.slowRequest = "true";
+  });
+  await page.getByTestId("prompt-textarea").fill("Original slow request");
+  await page.getByTestId("send-button").click();
+
+  await page.evaluate(() => {
+    history.replaceState({}, "", "/c/WEB:temporary-conversation");
+    const routeMarker = document.createElement("div");
+    document.body.append(routeMarker);
+    routeMarker.remove();
+  });
+  await page.waitForTimeout(100);
+  await queueMessage(page, "Keep this with the provisional chat");
+
+  await page.evaluate(() => {
+    const link = document.createElement("a");
+    link.href = "/c/existing-conversation";
+    link.dataset.testid = "open-existing-conversation";
+    link.textContent = "Open existing conversation";
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      history.pushState({}, "", link.href);
+      const routeMarker = document.createElement("div");
+      document.body.append(routeMarker);
+      routeMarker.remove();
+    });
+    window.addEventListener("popstate", () => {
+      const routeMarker = document.createElement("div");
+      document.body.append(routeMarker);
+      routeMarker.remove();
+    });
+    document.body.append(link);
+  });
+  await page.getByTestId("open-existing-conversation").click();
+
+  await expect(page).toHaveURL("https://chatgpt.com/c/existing-conversation");
+  await expect(queuePanel(page)).toHaveCount(0);
+
+  await page.evaluate(() => history.back());
+
+  await expect(page).toHaveURL(
+    "https://chatgpt.com/c/WEB:temporary-conversation",
+  );
+  await expect(queueItems(page).getByTestId("queue-item-preview")).toHaveText([
+    "Keep this with the provisional chat",
+  ]);
 });
 
 test("keeps a queued message pending when ChatGPT ignores the send click", async ({

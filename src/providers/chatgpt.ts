@@ -92,7 +92,19 @@ function isQueueScopePromotion(
   return (
     changesFromRouteToAssignedId("page", "conversation") ||
     changesFromRouteToAssignedId("temporary", "temporary") ||
-    changesFromRouteToAssignedId("unauthenticated", "unauthenticated")
+    changesFromRouteToAssignedId("unauthenticated", "unauthenticated") ||
+    (currentScope.startsWith("conversation:WEB:") &&
+      nextScope.startsWith("conversation:") &&
+      !nextScope.startsWith("conversation:WEB:"))
+  );
+}
+
+function isProvisionalQueueScope(scope: string): boolean {
+  return (
+    scope === "page:/" ||
+    scope.startsWith("temporary:/") ||
+    scope.startsWith("unauthenticated:/") ||
+    scope.startsWith("conversation:WEB:")
   );
 }
 
@@ -137,5 +149,6 @@ export const chatGptProvider: Provider = {
     return scope.startsWith("conversation:");
   },
   isQueueScopePromotion,
+  isProvisionalQueueScope,
   getTheme,
 };

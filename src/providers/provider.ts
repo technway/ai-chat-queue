@@ -47,5 +47,6 @@ export interface Provider {
   getQueueScope(url: URL, root: Document): string;
   isPersistentQueueScope(scope: string): boolean;
   isQueueScopePromotion?(currentScope: string, nextScope: string): boolean;
+  isProvisionalQueueScope?(scope: string): boolean;
   getTheme(root: Document): ProviderTheme | undefined;
 }
