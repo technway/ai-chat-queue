@@ -33,7 +33,7 @@
     "@types/react-dom": "^19.3.0",
     "@wxt-dev/module-react": "^1.1.5",
     "tailwindcss": "^4.3.3",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.11",
     "web-ext": "^10.5.0",
     "wxt": "^0.21.3"
