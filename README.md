@@ -17,7 +17,7 @@
 
 ## What it solves
 
-ChatGPT normally accepts one message while a response is generating. This extension adds a **Queue** button and keyboard shortcuts: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on macOS, or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on Windows and Linuxو so you can stage any follow-up draft, even while a turn is still active (for example during a tool approval). It displays the pending messages beside the composer and sends them one at a time as each response finishes.
+ChatGPT normally accepts one message while a response is generating. This extension adds a **Queue** button and keyboard shortcuts: <kbd>⌘</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> on macOS, or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>Enter</kbd> in general, so you can stage any follow-up draft, even while a turn is still active (for example during a tool approval). It displays the pending messages beside the composer and sends them one at a time as each response finishes.
 
 ## Installation
 
