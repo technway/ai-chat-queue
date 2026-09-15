@@ -1,3 +1,4 @@
+import { hasSameMessageContent } from "../../message-content";
 import { CHATGPT_SELECTORS } from "./selectors";
 
 type ComposerRoot = Pick<ParentNode, "querySelectorAll">;
@@ -205,7 +206,8 @@ export class ChatGptComposerAdapter {
 
     const existingContent = readComposer(composer);
     const hasUserDraft =
-      existingContent.trim().length > 0 && existingContent !== content;
+      existingContent.trim().length > 0 &&
+      !hasSameMessageContent(existingContent, content);
 
     if (hasUserDraft) {
       console.log("[ai-chat-queue] automatic send deferred", {
@@ -215,7 +217,7 @@ export class ChatGptComposerAdapter {
       return "deferred";
     }
 
-    if (existingContent !== content) {
+    if (!hasSameMessageContent(existingContent, content)) {
       this.writeMessage(composer, content);
     }
 
@@ -229,7 +231,7 @@ export class ChatGptComposerAdapter {
 
     const activeContent = readComposer(activeComposer);
 
-    if (activeContent !== content) {
+    if (!hasSameMessageContent(activeContent, content)) {
       console.log("[ai-chat-queue] automatic send deferred", {
         actualLength: activeContent.length,
         expectedLength: content.length,
@@ -254,7 +256,10 @@ export class ChatGptComposerAdapter {
     // replaces that exact draft.
     const composerAfterClick = this.findComposer();
 
-    if (!composerAfterClick || readComposer(composerAfterClick) === content) {
+    if (
+      !composerAfterClick ||
+      hasSameMessageContent(readComposer(composerAfterClick), content)
+    ) {
       console.log("[ai-chat-queue] automatic send not confirmed", {
         length: content.length,
       });

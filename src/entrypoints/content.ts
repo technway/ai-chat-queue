@@ -6,6 +6,7 @@ import { QueuePanel } from "../components/queue/QueuePanel";
 import "../styles/tailwind.css";
 import { QueueActionIntegration } from "../integrations/queue-action";
 import { placeQueueButton } from "../integrations/queue-button-placement";
+import { hasSameMessageContent } from "../message-content";
 import type { GenerationState, Provider } from "../providers/provider";
 import { providerRegistry } from "../providers/registry";
 import { MessageQueue } from "../queue/queue";
@@ -339,7 +340,9 @@ export default defineContentScript({
     const syncDraftGuard = () => {
       const content = composer.readMessage();
       const hasDraft =
-        content.trim().length > 0 && content !== stagedComposerContent;
+        content.trim().length > 0 &&
+        (stagedComposerContent === null ||
+          !hasSameMessageContent(content, stagedComposerContent));
 
       if (hasDraft === draftBlocked) {
         return;

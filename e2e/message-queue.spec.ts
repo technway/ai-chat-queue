@@ -265,6 +265,40 @@ test("restores a queued message after refresh", async ({ page }) => {
   ]);
   await expect(queuePanel(page)).toHaveCount(0);
 });
+
+test("resumes a restored queue after a direct message while ChatGPT is replying", async ({
+  page,
+}) => {
+  await openFakeChatGpt(page);
+  await startGenerating(page);
+  await queueMessage(page, "Queued with  two spaces");
+
+  await page.waitForTimeout(100);
+  await page.reload();
+
+  // Reproduce the likely cause of the equal-length mismatch: ChatGPT changes a
+  // regular space into a special space that looks the same. The queue must not
+  // treat this invisible change as user input.
+  await page.getByTestId("prompt-textarea").evaluate((composer) => {
+    composer.addEventListener("input", (event) => {
+      if (!event.isTrusted && composer.textContent?.includes("  ")) {
+        composer.textContent = composer.textContent.replace("  ", "\u00a0 ");
+      }
+    });
+  });
+
+  await page.getByTestId("prompt-textarea").fill("Direct message");
+  await page.getByTestId("prompt-textarea").press("Enter");
+  await expect(page.getByTestId("generation-state")).toHaveText("generating");
+
+  await page.getByRole("button", { name: "Resume queue" }).click();
+
+  await expect(page.locator("#sent-messages li")).toHaveText([
+    "Direct message",
+    "Queued with  two spaces",
+  ]);
+  await expect(queuePanel(page)).toHaveCount(0);
+});
 test("queues the current draft with the Queue button while generating", async ({
   page,
 }) => {

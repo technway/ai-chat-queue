@@ -306,6 +306,41 @@ describe("ChatGptComposerAdapter", () => {
     expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
   });
 
+  it("submits queued content normalized by the rich-text editor", async () => {
+    const composer = {
+      value: "Queued with\u00a0 two spaces",
+      dispatchEvent: vi.fn(),
+    } as unknown as Element;
+    const sendButton = {
+      disabled: false,
+      getAttribute: vi.fn(() => null),
+      closest: vi.fn(() => null),
+      click: vi.fn(() => {
+        if ("value" in composer) composer.value = "";
+      }),
+    } as unknown as Element;
+    const adapter = new ChatGptComposerAdapter(
+      {
+        querySelectorAll: vi.fn((selector: string) => {
+          if (includesSelector(CHATGPT_SELECTORS.composer, selector)) {
+            return [composer];
+          }
+
+          if (includesSelector(CHATGPT_SELECTORS.sendButton, selector)) {
+            return [sendButton];
+          }
+
+          return [];
+        }) as unknown as ParentNode["querySelectorAll"],
+      },
+      async () => undefined,
+    );
+
+    await expect(adapter.send("Queued with  two spaces")).resolves.toBe("sent");
+    expect(composer.dispatchEvent).not.toHaveBeenCalled();
+    expect("click" in sendButton && sendButton.click).toHaveBeenCalledOnce();
+  });
+
   it("keeps a queued message staged when the send click is ignored", async () => {
     const composer = {
       value: "Queued message",
